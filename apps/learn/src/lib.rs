@@ -29,22 +29,26 @@ impl xilem::AppState for AppState {
     }
 }
 
-pub fn app_logic(state: &mut AppState) -> impl Iterator<Item = WindowView<AppState>> + use<> {
-    let user_list = flex_row(sized_box(state.user_list.view()).width(600.px()))
-        .main_axis_alignment(MainAxisAlignment::Center)
-        .flex(1.);
-    let error = state.user_list.error_view().map(|error_view| {
-        flex_row(error_view)
+impl AppState {
+    pub fn logic(&mut self) -> impl Iterator<Item = WindowView<AppState>> + use<> {
+        let user_list = flex_row(sized_box(self.user_list.view()).width(600.px()))
             .main_axis_alignment(MainAxisAlignment::Center)
-            .padding(15.)
-    });
-    let content = map_state(
-        flex_col((user_list, error)).gap(0.px()),
-        |state: &mut AppState, ()| &mut state.user_list,
-    );
-    std::iter::once(
-        window(state.main_window_id, "Kreqo Learn", content)
-            .with_options(|options| options.on_close(|state: &mut AppState| state.running = false))
-            .with_base_color(BACKGROUND_COLOR),
-    )
+            .flex(1.);
+        let error = self.user_list.error_view().map(|error_view| {
+            flex_row(error_view)
+                .main_axis_alignment(MainAxisAlignment::Center)
+                .padding(15.)
+        });
+        let content = map_state(
+            flex_col((user_list, error)).gap(0.px()),
+            |state: &mut AppState, ()| &mut state.user_list,
+        );
+        std::iter::once(
+            window(self.main_window_id, "Kreqo Learn", content)
+                .with_options(|options| {
+                    options.on_close(|state: &mut AppState| state.running = false)
+                })
+                .with_base_color(BACKGROUND_COLOR),
+        )
+    }
 }
