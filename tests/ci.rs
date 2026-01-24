@@ -112,14 +112,6 @@ fn main() {
                 .add_step(Step::toolchain().cache(true))
                 .apply(install_native_dependencies)
                 .add_step(
-                    Step::new("Modify ci.yml line endings to CRLF")
-                        .uses("mingjun97", "file-regex-replace", "v1")
-                        .with(("regex", "((?<!\r)\n|\r(?!\n))"))
-                        .add_with(("replacement", "\r\n"))
-                        .add_with(("include", "^.github/workflows/ci.yml"))
-                        .if_condition(Expression::new("runner.os == 'Windows'")),
-                )
-                .add_step(
                     Step::new("Run cargo test")
                         .run("cargo +nightly test")
                         .env(("RUST_BACKTRACE", "full")),

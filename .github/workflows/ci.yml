@@ -129,13 +129,6 @@ jobs:
     - name: Install native dependencies
       if: runner.os == 'Linux'
       run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libfontconfig1-dev
-    - name: Modify ci.yml line endings to CRLF
-      if: runner.os == 'Windows'
-      uses: mingjun97/file-regex-replace@v1
-      with:
-        regex: "((?<!\r)\n|\r(?!\n))"
-        replacement: "\r\n"
-        include: ^.github/workflows/ci.yml
     - name: Run cargo test
       run: cargo +nightly test
       env:

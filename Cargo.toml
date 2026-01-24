@@ -30,3 +30,6 @@ kreqo-ui = { path = "./ui" }
 server_fn_macro_default = { path = "./server_fn_macro_default", default-features = false }
 
 kreqo-learn = { path = "./apps/learn" }
+
+[patch.crates-io]
+gh-workflow = { git = "https://github.com/darakreqo/gh-workflow" }
