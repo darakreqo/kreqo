@@ -1,0 +1,11 @@
+[package]
+name = "kreqo-ui"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+xilem.workspace = true
+
+kreqo-core.workspace = true
+kreqo-server.workspace = true

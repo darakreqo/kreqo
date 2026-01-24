@@ -1,0 +1,23 @@
+[package]
+name = "kreqo-server"
+version = "0.0.0"
+edition.workspace = true
+
+[features]
+default = ["ssr"]
+ssr = ["server_fn/ssr", "server_fn_macro_default/ssr"]
+
+[dependencies]
+anyhow.workspace = true
+argon2.workspace = true
+axum.workspace = true
+cfg-if.workspace = true
+dotenvy.workspace = true
+server_fn.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+kreqo-core.workspace = true
+server_fn_macro_default.workspace = true

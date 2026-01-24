@@ -1,0 +1,35 @@
+[workspace]
+resolver = "3"
+members = ["apps/learn", "core", "server", "server_fn_macro_default", "tests", "ui"]
+
+[workspace.package]
+edition = "2024"
+
+[workspace.dependencies]
+anyhow = "1.0"
+argon2 = "0.5"
+axum = "0.8"
+cfg-if = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+rs-fsrs = "1.2"
+serde = { version = "1.0", features = ["derive"] }
+server_fn = { version = "0.8", default-features = false, features = ["axum", "reqwest"] }
+server_fn_macro = { version = "0.8", default-features = false, features = ["axum", "reqwest"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
+syn = "2.0"
+thiserror = "2.0"
+tokio = { version = "1.48", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+xilem = { git = "https://github.com/linebender/xilem" }
+
+kreqo-core = { path = "./core" }
+kreqo-server = { path = "./server", default-features = false }
+kreqo-ui = { path = "./ui" }
+server_fn_macro_default = { path = "./server_fn_macro_default", default-features = false }
+
+kreqo-learn = { path = "./apps/learn" }
+
+[patch.crates-io]
+gh-workflow = { git = "https://github.com/darakreqo/gh-workflow" }
