@@ -1572,7 +1572,7 @@ dependencies = [
 [[package]]
 name = "gh-workflow"
 version = "0.8.1"
-source = "git+https://github.com/darakreqo/gh-workflow#5a17fc5d10f7815f22317f536a963eebbbf8c604"
+source = "git+https://github.com/darakreqo/gh-workflow#309d5a32fb3d06ecb54be682332a8a3b1d0ba6ae"
 dependencies = [
  "async-trait",
  "derive_more",
@@ -1590,7 +1590,7 @@ dependencies = [
 [[package]]
 name = "gh-workflow-macros"
 version = "0.8.1"
-source = "git+https://github.com/darakreqo/gh-workflow#5a17fc5d10f7815f22317f536a963eebbbf8c604"
+source = "git+https://github.com/darakreqo/gh-workflow#309d5a32fb3d06ecb54be682332a8a3b1d0ba6ae"
 dependencies = [
  "heck",
  "quote",
