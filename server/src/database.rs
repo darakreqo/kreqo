@@ -51,8 +51,6 @@ pub async fn create_user(username: String, password: String) -> Result<User, Ser
         .hash_password(password.as_bytes(), &salt)?
         .to_string();
 
-    // return Err(ServerError::Database("Database error!!!".to_string()));
-
     let id = sqlx::query_scalar!(
         "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id",
         username.clone(),

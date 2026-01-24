@@ -36,8 +36,6 @@ jobs:
         toolchain: nightly
         components: rustfmt
         cache: true
-    - name: Run cargo-machete
-      uses: bnjbvr/cargo-machete@main
     - name: Install cargo-sort
       uses: taiki-e/install-action@v2
       with:
@@ -46,6 +44,8 @@ jobs:
       uses: taiki-e/install-action@v2
       with:
         tool: taplo
+    - name: Run cargo-machete
+      uses: bnjbvr/cargo-machete@main
     - name: Run cargo-sort
       run: cargo +nightly sort --workspace --grouped --check --check-format
     - name: Run taplo fmt
@@ -63,6 +63,9 @@ jobs:
       with:
         toolchain: nightly
         cache: true
+    - name: Install native dependencies
+      if: runner.os == 'Linux'
+      run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libfontconfig1-dev
     - id: postgres
       name: Setup PostgreSQL
       uses: ikalnytskyi/action-setup-postgres@v8
@@ -80,9 +83,6 @@ jobs:
       run: sqlx migrate run --source server/migrations
       env:
         DATABASE_URL: ${{ steps.postgres.outputs.connection-uri }}
-    - name: Install native dependencies
-      if: runner.os == 'Linux'
-      run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libfontconfig1-dev
     - name: Run cargo sqlx prepare
       run: cargo +nightly sqlx prepare --check --workspace
       env:
@@ -131,5 +131,3 @@ jobs:
       run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libfontconfig1-dev
     - name: Run cargo test
       run: cargo +nightly test
-      env:
-        RUST_BACKTRACE: full

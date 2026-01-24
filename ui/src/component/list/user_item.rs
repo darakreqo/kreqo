@@ -120,12 +120,11 @@ impl Form for UpdateUserForm {
             },
         )
         .on_enter(|_, _| Submit::Yes)
-        .placeholder("Username")
-        .flex(1.);
+        .placeholder("Username");
         let ok_button = button(label("Ok").color(SUCCESS_COLOR), |_| Submit::Yes);
         let cancel_button = text_button("Cancel", |_| Submit::Cancel);
         let error = self.error_view();
-        flex_row((username, ok_button, cancel_button, error))
+        flex_row((username.flex(1.), ok_button, cancel_button, error))
             .padding(5.)
             .corner_radius(10.)
             .background_color(SURFACE_COLOR)
@@ -196,10 +195,10 @@ impl ListItem for User {
         let id = prose(format!("{}", self.id))
             .text_alignment(TextAlign::Center)
             .width(25.px());
-        let username = prose(self.username.to_string()).flex(1.);
+        let username = prose(self.username.to_string());
         let edit_button = text_button("Edit", |_| ItemAction::Edit);
         let delete_button = button(label("Delete").color(DANGER_COLOR), |_| ItemAction::Delete);
-        flex_row((id, username, edit_button, delete_button))
+        flex_row((id, username.flex(1.), edit_button, delete_button))
             .padding(5.)
             .corner_radius(10.)
             .background_color(SURFACE_COLOR)

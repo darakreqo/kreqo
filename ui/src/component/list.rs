@@ -84,7 +84,6 @@ where
     editing: Option<usize>,
     items: Vec<T>,
     sender: Option<UnboundedSender<ListRequest<T>>>,
-    #[allow(dead_code)]
     storage: S,
 }
 

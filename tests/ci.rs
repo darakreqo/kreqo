@@ -27,7 +27,7 @@ fn main() {
             .fold(job, |job, tool| job.apply_with(install_tool, *tool))
     };
 
-    let pg_env = |step: Step<Run>| {
+    let db_env = |step: Step<Run>| {
         step.env(("PGSERVICE", "${{ steps.postgres.outputs.service-name }}"))
             .env((
                 "DATABASE_URL",
@@ -49,7 +49,7 @@ fn main() {
         .add_step(
             Step::new("Run sqlx migrate run")
                 .run("sqlx migrate run --source server/migrations")
-                .apply(pg_env),
+                .apply(db_env),
         )
     };
 
@@ -63,7 +63,6 @@ fn main() {
             Job::new("formatting")
                 .add_step(Step::checkout())
                 .add_step(Step::toolchain().add_nightly().add_fmt().cache(true))
-                .add_step(Step::new("Run cargo-machete").uses("bnjbvr", "cargo-machete", "main"))
                 .apply_with(
                     install_tools,
                     vec![
@@ -71,6 +70,7 @@ fn main() {
                         ("Install taplo", "taplo"),
                     ],
                 )
+                .add_step(Step::new("Run cargo-machete").uses("bnjbvr", "cargo-machete", "main"))
                 .add_step(
                     Step::new("Run cargo-sort")
                         .run("cargo +nightly sort --workspace --grouped --check --check-format"),
@@ -83,18 +83,17 @@ fn main() {
             Job::new("sqlx offline")
                 .add_step(Step::checkout())
                 .add_step(Step::toolchain().add_nightly().cache(true))
-                .apply(setup_database)
                 .apply(install_native_dependencies)
+                .apply(setup_database)
                 .add_step(
                     Step::new("Run cargo sqlx prepare")
                         .run("cargo +nightly sqlx prepare --check --workspace")
-                        .apply(pg_env),
+                        .apply(db_env),
                 ),
         )
         .add_job(
             "lint",
             Job::new("linting")
-                .runs_on("${{ matrix.os }}")
                 .apply(runs_on_major_os_matrix)
                 .add_step(Step::checkout())
                 .add_step(Step::toolchain().add_nightly().add_clippy().cache(true))
@@ -106,16 +105,11 @@ fn main() {
         .add_job(
             "test",
             Job::new("testing")
-                .runs_on("${{ matrix.os }}")
                 .apply(runs_on_major_os_matrix)
                 .add_step(Step::checkout())
                 .add_step(Step::toolchain().cache(true))
                 .apply(install_native_dependencies)
-                .add_step(
-                    Step::new("Run cargo test")
-                        .run("cargo +nightly test")
-                        .env(("RUST_BACKTRACE", "full")),
-                ),
+                .add_step(Step::new("Run cargo test").run("cargo +nightly test")),
         );
 
     workflow.generate().expect("workflow should generate");
