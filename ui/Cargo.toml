@@ -1,0 +1,12 @@
+[package]
+name = "kreqo-ui"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+xilem = { workspace = true }
+
+kreqo-core = { path = "../core" }
+kreqo-server = { path = "../server" }

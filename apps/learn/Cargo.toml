@@ -1,0 +1,20 @@
+[package]
+name = "kreqo-learn"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+rs-fsrs = { workspace = true }
+serde = { workspace = true }
+server_fn = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+xilem = { workspace = true }
+
+kreqo-core = { path = "../../core" }
+kreqo-server = { path = "../../server", default-features = false }
+kreqo-ui = { path = "../../ui" }
