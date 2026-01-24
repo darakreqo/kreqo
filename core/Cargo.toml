@@ -4,11 +4,10 @@ version = "0.0.0"
 edition.workspace = true
 
 [dependencies]
-argon2 = { workspace = true }
-chrono = { workspace = true }
-serde = { workspace = true }
-server_fn = { workspace = true }
-sqlx = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-xilem = { workspace = true }
+argon2.workspace = true
+chrono.workspace = true
+serde.workspace = true
+server_fn.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+xilem.workspace = true

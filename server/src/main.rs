@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
         .expect("database migrations failed");
 
     let router = Router::new()
-        .route("/", get(|| async { "kreqo_server is running" }))
+        .route("/", get(|| async { "kreqo-server is running" }))
         .route("/api/{*wildcard}", post(handle_server_fn));
 
     let listener = TcpListener::bind("localhost:8080").await?;

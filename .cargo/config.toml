@@ -1,2 +1,8 @@
+[unstable]
+feature-unification = true
+
 [build]
-rustdocflags=["--default-theme=ayu"]
+rustdocflags = ["--default-theme=ayu"]
+
+[resolver]
+feature-unification = "selected"

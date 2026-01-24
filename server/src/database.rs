@@ -1,14 +1,15 @@
-#[cfg(feature = "ssr")]
-use argon2::{
-    Argon2,
-    password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
-};
+cfg_if::cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        use argon2::{
+            Argon2,
+            password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
+        };
+        use crate::DB;
+    }
+}
 use kreqo_core::User;
 use kreqo_core::errors::ServerError;
 use server_fn_macro_default::server;
-
-#[cfg(feature = "ssr")]
-use crate::DB;
 
 #[server]
 pub async fn get_users() -> Result<Vec<User>, ServerError> {

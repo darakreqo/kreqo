@@ -2052,7 +2052,6 @@ dependencies = [
  "server_fn",
  "sqlx",
  "thiserror 2.0.18",
- "tokio",
  "xilem",
 ]
 
@@ -2060,18 +2059,9 @@ dependencies = [
 name = "kreqo-learn"
 version = "0.0.0"
 dependencies = [
- "anyhow",
- "chrono",
- "futures",
  "kreqo-core",
- "kreqo-server",
  "kreqo-ui",
- "rs-fsrs",
- "serde",
  "server_fn",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
  "xilem",
 ]
 
@@ -2082,6 +2072,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "axum",
+ "cfg-if",
  "dotenvy",
  "kreqo-core",
  "server_fn",
@@ -2099,7 +2090,6 @@ dependencies = [
  "kreqo-core",
  "kreqo-server",
  "thiserror 2.0.18",
- "tracing",
  "xilem",
 ]
 
@@ -2241,7 +2231,7 @@ dependencies = [
 [[package]]
 name = "masonry"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "accesskit",
  "dpi",
@@ -2255,7 +2245,7 @@ dependencies = [
 [[package]]
 name = "masonry_core"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "accesskit",
  "anymap3",
@@ -2280,7 +2270,7 @@ dependencies = [
 [[package]]
 name = "masonry_testing"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "accesskit_consumer",
  "futures-intrusive",
@@ -2294,7 +2284,7 @@ dependencies = [
 [[package]]
 name = "masonry_winit"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "accesskit_winit",
  "copypasta",
@@ -3140,9 +3130,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.105"
+version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "535d180e0ecab6268a3e718bb9fd44db66bbbc256257165fc699dadf70d16fe7"
+checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
 ]
@@ -3401,15 +3391,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1964b10c76125c36f8afe190065a4bf9a87bf324842c05701330bba9f1cacbb"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "rs-fsrs"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65a7e7d53c16e720833aa109509f46d4d6cc0c4c820f95b865df72c6118e9124"
-dependencies = [
- "chrono",
 ]
 
 [[package]]
@@ -4615,7 +4596,7 @@ dependencies = [
 [[package]]
 name = "tree_arena"
 version = "0.2.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "hashbrown 0.16.1",
 ]
@@ -5962,7 +5943,7 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 [[package]]
 name = "xilem"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "masonry",
  "masonry_winit",
@@ -5977,7 +5958,7 @@ dependencies = [
 [[package]]
 name = "xilem_core"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "anymore",
  "hashbrown 0.16.1",
@@ -5987,7 +5968,7 @@ dependencies = [
 [[package]]
 name = "xilem_masonry"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#184edff3892084dfa8d86511842855b86655823d"
+source = "git+https://github.com/linebender/xilem#53395a4cdf488173b90bcb6241eee7b2d702df4e"
 dependencies = [
  "masonry",
  "tokio",
