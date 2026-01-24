@@ -1,7 +1,7 @@
 use std::env;
 
 use axum::Router;
-use axum::routing::post;
+use axum::routing::{get, post};
 use kreqo_server::DB;
 use server_fn::axum::handle_server_fn;
 use tokio::net::TcpListener;
@@ -25,7 +25,9 @@ async fn main() -> anyhow::Result<()> {
         .await
         .expect("database migrations failed");
 
-    let router = Router::new().route("/api/{*wildcard}", post(handle_server_fn));
+    let router = Router::new()
+        .route("/", get(|| async { "kreqo_server is running" }))
+        .route("/api/{*wildcard}", post(handle_server_fn));
 
     let listener = TcpListener::bind("localhost:8080").await?;
 
