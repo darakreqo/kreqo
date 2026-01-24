@@ -173,7 +173,11 @@ where
     fn handle(self, state: &mut AsyncList<T, S>) {
         match self {
             ListMessage::FetchedAll(items) => state.items = items,
-            ListMessage::Created(item) => state.items.push(item),
+            ListMessage::Created(item) => {
+                state.update_form.reset();
+                state.editing = None;
+                state.items.push(item);
+            }
             ListMessage::Updated(id, new_item) => {
                 let index = state.index_of(id);
                 let item_mut = index.and_then(|i| state.items.get_mut(i));
@@ -184,6 +188,8 @@ where
             }
             ListMessage::Deleted(id) => {
                 if let Some(index) = state.index_of(id) {
+                    state.update_form.reset();
+                    state.editing = None;
                     state.items.remove(index);
                 }
             }
