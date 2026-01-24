@@ -2,7 +2,7 @@ pub mod user_item;
 
 use xilem::WidgetView;
 use xilem::core::one_of::Either;
-use xilem::core::{Edit, MessageProxy, fork, lens, map_action, map_state};
+use xilem::core::{Edit, MessageProxy, Read, fork, lens, map_action, map_state};
 use xilem::masonry::layout::Dim;
 use xilem::style::Style;
 use xilem::tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -42,7 +42,7 @@ where
     type UpdateForm: Form<Output: Send> + From<Self>;
 
     fn id(&self) -> Self::Id;
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, ItemAction> + use<Self>;
+    fn view(&self) -> impl WidgetView<Read<Self>, ItemAction> + use<Self>;
 }
 
 pub enum ItemAction {
@@ -269,7 +269,7 @@ where
         } else {
             Either::B(map_action(
                 lens(T::view, move |state: &mut Self, ()| {
-                    state.items.get_mut(index).unwrap()
+                    state.items.get(index).unwrap()
                 }),
                 move |state: &mut Self, action| {
                     action.handle(state, index);

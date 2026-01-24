@@ -2,7 +2,7 @@ use kreqo_core::User;
 use kreqo_core::errors::ServerError;
 use kreqo_server::database::{create_user, delete_user, get_users, update_user_username};
 use thiserror::Error;
-use xilem::core::Edit;
+use xilem::core::{Edit, Read};
 use xilem::masonry::layout::{AsUnit, Dim};
 use xilem::style::Style;
 use xilem::view::{FlexExt, button, flex_col, flex_row, label, prose, text_button, text_input};
@@ -192,7 +192,7 @@ impl ListItem for User {
         self.id
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, ItemAction> + use<> {
+    fn view(&self) -> impl WidgetView<Read<Self>, ItemAction> + use<> {
         let id = prose(format!("{}", self.id))
             .text_alignment(TextAlign::Center)
             .width(25.px());
