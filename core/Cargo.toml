@@ -10,4 +10,3 @@ serde.workspace = true
 server_fn.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true
-xilem.workspace = true

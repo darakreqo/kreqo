@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["apps/learn", "core", "server", "server_fn_macro_default", "ui"]
+members = ["apps/learn", "core", "server", "server_fn_macro_default", "tests", "ui"]
 
 [workspace.package]
 edition = "2024"
