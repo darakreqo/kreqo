@@ -1,53 +1,63 @@
-pub mod user_item;
+pub mod filter;
+pub mod sorter;
+pub mod storage;
 
+use uuid::Uuid;
 use xilem::WidgetView;
 use xilem::core::one_of::Either;
 use xilem::core::{Edit, MessageProxy, Read, fork, lens, map_action, map_state};
-use xilem::masonry::layout::Dim;
+use xilem::masonry::theme::BASIC_WIDGET_HEIGHT;
 use xilem::style::Style;
 use xilem::tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use xilem::view::{flex_col, portal, worker};
+use xilem::view::{flex_col, spinner, worker};
 
 use crate::component::form::Submit;
+pub use crate::component::list::filter::ListFilter;
+pub use crate::component::list::sorter::ListSorter;
+pub use crate::component::list::storage::ListStorage;
+use crate::component::list::storage::Retryable;
 use crate::component::{ErrorView, Form};
-
-pub trait ListStorage
-where
-    Self: Default + std::fmt::Debug + 'static,
-{
-    type Item: ListItem;
-    type Error: ErrorView + std::fmt::Debug + Send;
-
-    fn last_error(&mut self) -> &mut Option<Self::Error>;
-
-    fn fetch_all() -> impl Future<Output = Result<Vec<Self::Item>, Self::Error>> + Send;
-    fn create(
-        create_form: <<Self::Item as ListItem>::CreateForm as Form>::Output,
-    ) -> impl Future<Output = Result<Self::Item, Self::Error>> + Send;
-    fn update(
-        id: <Self::Item as ListItem>::Id,
-        update_form: <<Self::Item as ListItem>::UpdateForm as Form>::Output,
-    ) -> impl Future<Output = Result<Self::Item, Self::Error>> + Send;
-    fn delete(
-        id: <Self::Item as ListItem>::Id,
-    ) -> impl Future<Output = Result<<Self::Item as ListItem>::Id, Self::Error>> + Send;
-}
+use crate::pending::Pending;
 
 pub trait ListItem
 where
-    Self: Sized + Clone + std::fmt::Debug + Send + 'static,
+    Self: Clone + std::fmt::Debug + Send + 'static,
 {
-    type Id: PartialEq + Copy + std::fmt::Debug + Send;
-    type CreateForm: Form<Output: Send>;
-    type UpdateForm: Form<Output: Send> + From<Self>;
+    type Id: PartialEq + Copy + std::fmt::Debug + Send + Sync;
+    type CreateForm: Form<Output: Clone + Send>;
+    type UpdateForm: Form<Output: Clone + Send> + From<Self>;
+    type Filter: ListFilter<Item = Self>;
+    type Sorter: ListSorter<Item = Self>;
 
     fn id(&self) -> Self::Id;
-    fn view(&self) -> impl WidgetView<Read<Self>, ItemAction> + use<Self>;
+    fn view(
+        &self,
+        pending_item_operation: PendingItemOperation,
+    ) -> impl WidgetView<Read<Self>, ItemAction<Self>> + use<Self>;
+    fn pending_view(
+        create_output: &<Self::CreateForm as Form>::Output,
+    ) -> impl WidgetView<Read<<Self::CreateForm as Form>::Output>> + use<Self> {
+        let _ = create_output;
+        spinner().height(BASIC_WIDGET_HEIGHT)
+    }
 }
 
-pub enum ItemAction {
+pub enum ItemAction<T>
+where
+    T: ListItem,
+{
+    None,
     Edit,
+    Update(<T::UpdateForm as Form>::Output),
     Delete,
+}
+
+#[derive(Default)]
+pub enum PendingItemOperation {
+    #[default]
+    None,
+    PendingUpdate,
+    PendingDelete,
 }
 
 pub enum ListRequest<T>
@@ -60,7 +70,21 @@ where
     Delete(T::Id),
 }
 
-#[derive(Debug)]
+impl<T> Clone for ListRequest<T>
+where
+    T: ListItem,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Self::FetchAll => Self::FetchAll,
+            Self::Create(arg0) => Self::Create(arg0.clone()),
+            Self::Update(arg0, arg1) => Self::Update(*arg0, arg1.clone()),
+            Self::Delete(arg0) => Self::Delete(*arg0),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ListMessage<T, S>
 where
     T: ListItem,
@@ -77,126 +101,118 @@ where
 pub struct AsyncList<T, S>
 where
     T: ListItem,
-    S: ListStorage<Item = T>,
+    S: ListStorage,
 {
     create_form: T::CreateForm,
     update_form: T::UpdateForm,
-    editing: Option<usize>,
+    filter: Option<T::Filter>,
+    sorter: Option<T::Sorter>,
+    editing: Option<T::Id>,
     items: Vec<T>,
-    sender: Option<UnboundedSender<ListRequest<T>>>,
+    processed_items: Vec<(T, f32)>,
+    sender: Option<UnboundedSender<Pending<ListRequest<T>>>>,
+    pending_requests: Vec<Pending<ListRequest<T>>>,
     storage: S,
 }
 
-impl ItemAction {
-    fn handle<T, S>(self, state: &mut AsyncList<T, S>, index: usize)
-    where
-        T: ListItem,
-        S: ListStorage<Item = T>,
-    {
-        let item = state.items.get(index);
-        match (self, item) {
-            (ItemAction::Edit, Some(item)) => {
-                state.update_form = T::UpdateForm::from(item.clone());
-                state.editing = Some(index);
-            }
-            (ItemAction::Delete, Some(item)) => {
-                state.sender_send(ListRequest::Delete(item.id()));
-            }
-            _ => (),
-        }
-    }
-}
-
-impl<T> ListRequest<T>
+impl<T> ItemAction<T>
 where
     T: ListItem,
 {
-    async fn handle<S>(self, proxy: &MessageProxy<ListMessage<T, S>>)
+    fn handle<S>(self, state: &mut AsyncList<T, S>, id: T::Id)
     where
         S: ListStorage<Item = T>,
     {
         match self {
+            ItemAction::None => (),
+            ItemAction::Edit => {
+                if let Some(item) = state.get(id) {
+                    state.update_form = T::UpdateForm::from(item.clone());
+                    state.editing = Some(id);
+                }
+            }
+            ItemAction::Update(update_output) => {
+                state.send_request(ListRequest::Update(id, update_output));
+            }
+            ItemAction::Delete => {
+                state.send_request(ListRequest::Delete(id));
+            }
+        }
+    }
+}
+
+impl<T> Pending<ListRequest<T>>
+where
+    T: ListItem,
+{
+    async fn handle<S>(self, proxy: &MessageProxy<Pending<ListMessage<T, S>>>)
+    where
+        S: ListStorage<Item = T>,
+    {
+        let pending_message = self.fetch_map(async |list_request| match list_request {
             ListRequest::FetchAll => {
                 let result = S::fetch_all().await;
                 match result {
-                    Ok(items) => {
-                        let _ = proxy.message(ListMessage::FetchedAll(items));
-                    }
-                    Err(error) => {
-                        let _ = proxy.message(ListMessage::Error(error));
-                    }
+                    Ok(items) => ListMessage::FetchedAll(items),
+                    Err(error) => ListMessage::Error(error),
                 }
             }
             ListRequest::Create(create_output) => {
                 let result = S::create(create_output).await;
                 match result {
-                    Ok(item) => {
-                        let _ = proxy.message(ListMessage::Created(item));
-                    }
-                    Err(error) => {
-                        let _ = proxy.message(ListMessage::Error(error));
-                    }
+                    Ok(item) => ListMessage::Created(item),
+                    Err(error) => ListMessage::Error(error),
                 }
             }
             ListRequest::Update(id, update_output) => {
                 let result = S::update(id, update_output).await;
                 match result {
-                    Ok(item) => {
-                        let _ = proxy.message(ListMessage::Updated(id, item));
-                    }
-                    Err(error) => {
-                        let _ = proxy.message(ListMessage::Error(error));
-                    }
+                    Ok(item) => ListMessage::Updated(id, item),
+                    Err(error) => ListMessage::Error(error),
                 }
             }
             ListRequest::Delete(id) => {
                 let result = S::delete(id).await;
                 match result {
-                    Ok(id) => {
-                        let _ = proxy.message(ListMessage::Deleted(id));
-                    }
-                    Err(error) => {
-                        let _ = proxy.message(ListMessage::Error(error));
-                    }
+                    Ok(id) => ListMessage::Deleted(id),
+                    Err(error) => ListMessage::Error(error),
                 }
             }
-        }
+        });
+        let _ = proxy.message(pending_message.await);
     }
 }
 
-impl<T, S> ListMessage<T, S>
+impl<T, S> Pending<ListMessage<T, S>>
 where
     T: ListItem,
     S: ListStorage<Item = T>,
 {
     fn handle(self, state: &mut AsyncList<T, S>) {
-        match self {
+        match self.data {
             ListMessage::FetchedAll(items) => state.items = items,
             ListMessage::Created(item) => {
-                state.update_form.reset();
-                state.editing = None;
                 state.items.push(item);
             }
             ListMessage::Updated(id, new_item) => {
-                let index = state.index_of(id);
-                let item_mut = index.and_then(|i| state.items.get_mut(i));
-                if let Some(item) = item_mut {
+                if let Some(item) = state.get_mut(id) {
                     *item = new_item;
-                    state.editing = None;
                 }
             }
             ListMessage::Deleted(id) => {
-                if let Some(index) = state.index_of(id) {
-                    state.update_form.reset();
-                    state.editing = None;
-                    state.items.remove(index);
-                }
+                state.remove(id);
             }
             ListMessage::Error(error) => {
+                if error.should_retry() {
+                    state.retry_request(self.request_id);
+                } else {
+                    state.resolve_pending_request(self.request_id);
+                }
                 *state.storage.last_error() = Some(error);
                 return;
             }
         }
+        state.resolve_pending_request(self.request_id);
         *state.storage.last_error() = None;
     }
 }
@@ -206,55 +222,130 @@ where
     T: ListItem,
     S: ListStorage<Item = T>,
 {
-    fn sender_send(&self, request: ListRequest<T>) {
-        if let Some(sender) = &self.sender {
-            let _ = sender.send(request);
+    pub fn new(filter: bool, sorter: bool) -> Self {
+        Self {
+            create_form: T::CreateForm::default(),
+            update_form: T::UpdateForm::default(),
+            filter: filter.then_some(T::Filter::default()),
+            sorter: sorter.then_some(T::Sorter::default()),
+            editing: None,
+            items: Vec::new(),
+            processed_items: Vec::new(),
+            pending_requests: Vec::new(),
+            sender: None,
+            storage: S::default(),
         }
     }
 
-    fn index_of(&mut self, id: T::Id) -> Option<usize> {
-        self.items
+    fn filter(&self, item: &T) -> (bool, f32) {
+        self.filter
+            .as_ref()
+            .map(|filter| filter.filter(item))
+            .unwrap_or((true, 0.))
+    }
+
+    fn pending_item_operation(&self, id: T::Id) -> PendingItemOperation {
+        self.pending_requests
+            .iter()
+            .find_map(|pending_request| match pending_request {
+                Pending {
+                    data: ListRequest::Update(pending_id, _),
+                    ..
+                } if *pending_id == id => Some(PendingItemOperation::PendingUpdate),
+                Pending {
+                    data: ListRequest::Delete(pending_id),
+                    ..
+                } if *pending_id == id => Some(PendingItemOperation::PendingDelete),
+                _ => None,
+            })
+            .unwrap_or_default()
+    }
+
+    fn send_request(&mut self, request: ListRequest<T>) {
+        if let Some(sender) = &self.sender {
+            let pending_request = Pending::new(request.clone());
+            self.pending_requests
+                .push(Pending::from((pending_request.request_id, request)));
+            let _ = sender.send(pending_request);
+        }
+    }
+
+    fn retry_request(&mut self, request_id: Uuid) {
+        let pending_request = self
+            .pending_requests
+            .iter()
+            .find(|pending_request| pending_request.request_id == request_id);
+        if let (Some(sender), Some(pending_request)) = (&self.sender, pending_request) {
+            let _ = sender.send(pending_request.clone().with_delay(0.5));
+        }
+    }
+
+    fn resolve_pending_request(&mut self, request_id: Uuid) {
+        if let Some(index) = self
+            .pending_requests
+            .iter()
+            .enumerate()
+            .find_map(|(i, pending)| (request_id == pending.request_id).then_some(i))
+        {
+            self.pending_requests.remove(index);
+        }
+    }
+
+    fn get(&self, id: T::Id) -> Option<&T> {
+        self.items.iter().find(|item| item.id() == id)
+    }
+
+    fn get_mut(&mut self, id: T::Id) -> Option<&mut T> {
+        self.items.iter_mut().find(|item| item.id() == id)
+    }
+
+    fn remove(&mut self, id: T::Id) {
+        if let Some(index) = self
+            .items
             .iter()
             .enumerate()
             .find_map(|(i, item)| (item.id() == id).then_some(i))
+        {
+            self.items.remove(index);
+        }
     }
 
     fn handle_create_submit(&mut self, submit: Submit) {
         match submit {
-            Submit::No => {
-                return;
-            }
+            Submit::No => (),
             Submit::Cancel => {
                 self.create_form.reset();
-                return;
             }
-            _ => (),
-        }
-        if let Some(output) = self.create_form.submit() {
-            self.sender_send(ListRequest::Create(output));
+            Submit::Yes => {
+                if let Some(output) = self.create_form.submit() {
+                    self.send_request(ListRequest::Create(output));
+                }
+            }
         }
     }
 
-    fn handle_update_submit(&mut self, index: usize, submit: Submit) {
+    fn handle_update_submit(&mut self, id: T::Id, submit: Submit) {
         match submit {
-            Submit::No => {
-                return;
-            }
+            Submit::No => (),
             Submit::Cancel => {
                 self.editing = None;
                 self.update_form.reset();
-                return;
             }
-            _ => (),
-        }
-        let item = self.items.get(index);
-        let output = self.update_form.submit();
-        if let (Some(item), Some(output)) = (item, output) {
-            self.sender_send(ListRequest::Update(item.id(), output));
+            Submit::Yes => {
+                if let Some(output) = self.update_form.submit() {
+                    self.editing = None;
+                    self.send_request(ListRequest::Update(id, output));
+                }
+            }
         }
     }
 
-    fn item_view(editing: bool, index: usize) -> impl WidgetView<Edit<Self>> + use<T, S> {
+    fn item_view(
+        editing: bool,
+        pending_item_operation: PendingItemOperation,
+        id: T::Id,
+        item: &T,
+    ) -> impl WidgetView<Edit<Self>> + use<T, S> {
         if editing {
             Either::A(map_action(
                 lens(
@@ -262,19 +353,59 @@ where
                     move |state: &mut Self, ()| &mut state.update_form,
                 ),
                 move |state: &mut Self, submit| {
-                    state.handle_update_submit(index, submit);
+                    state.handle_update_submit(id, submit);
                 },
             ))
         } else {
             Either::B(map_action(
-                lens(T::view, move |state: &mut Self, ()| {
-                    state.items.get(index).unwrap()
-                }),
+                map_state(
+                    item.view(pending_item_operation),
+                    move |state: &mut Self, ()| state.get(id).unwrap(),
+                ),
                 move |state: &mut Self, action| {
-                    action.handle(state, index);
+                    action.handle(state, id);
                 },
             ))
         }
+    }
+
+    fn process_items(&mut self) -> impl Iterator<Item = impl WidgetView<Edit<Self>> + use<T, S>> {
+        self.processed_items = self
+            .items
+            .iter()
+            .cloned()
+            .filter_map(|item| match self.filter(&item) {
+                (filter, score) if filter => Some((item, score)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        if let Some(sorter) = &self.sorter {
+            self.processed_items
+                .sort_by(|(a, sa), (b, sb)| sorter.sort(a, b, *sa, *sb));
+        }
+        self.processed_items.iter().map(|(item, _)| {
+            let id = item.id();
+            let editing = self.editing == Some(id);
+            let pending_item_operation = self.pending_item_operation(id);
+            Self::item_view(editing, pending_item_operation, id, item)
+        })
+    }
+
+    fn process_pending_items(
+        &self,
+    ) -> impl Iterator<Item = impl WidgetView<Edit<Self>> + use<T, S>> {
+        self.pending_requests
+            .iter()
+            .enumerate()
+            .filter_map(|(i, pending_request)| {
+                matches!(pending_request.data, ListRequest::Create(_)).then_some(lens(
+                    T::pending_view,
+                    move |state: &mut Self, ()| match &state.pending_requests.get(i).unwrap().data {
+                        ListRequest::Create(create_output) => create_output,
+                        _ => unreachable!(),
+                    },
+                ))
+            })
     }
 
     pub fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<T, S> {
@@ -287,30 +418,32 @@ where
                 state.handle_create_submit(submit);
             },
         );
-        let items = self
-            .items
-            .iter_mut()
-            .enumerate()
-            .map(|(i, _)| Self::item_view(self.editing == Some(i), i))
-            .collect::<Vec<_>>();
+        let filter_line = self.filter.as_mut().map(|filter| {
+            map_state(filter.view(), move |state: &mut Self, ()| {
+                state.filter.as_mut().unwrap()
+            })
+        });
+        let sorter_line = self.sorter.as_mut().map(|sorter| {
+            map_state(sorter.view(), move |state: &mut Self, ()| {
+                state.sorter.as_mut().unwrap()
+            })
+        });
+        let items = self.process_items().collect::<Vec<_>>();
+        let pending_items = self.process_pending_items().collect::<Vec<_>>();
         fork(
-            portal(
-                flex_col((create_line, items))
-                    .width(Dim::Stretch)
-                    .padding(15.),
-            ),
+            flex_col((create_line, filter_line, sorter_line, items, pending_items)),
             worker(
-                |proxy, mut rx: UnboundedReceiver<ListRequest<T>>| async move {
-                    while let Some(request) = rx.recv().await {
-                        request.handle::<S>(&proxy).await;
+                |proxy, mut rx: UnboundedReceiver<Pending<ListRequest<T>>>| async move {
+                    while let Some(pending_request) = rx.recv().await {
+                        pending_request.handle(&proxy).await;
                     }
                 },
                 |state: &mut Self, sender| {
                     state.sender = Some(sender);
-                    state.sender_send(ListRequest::FetchAll);
+                    state.send_request(ListRequest::FetchAll);
                 },
-                |state: &mut Self, message: ListMessage<T, S>| {
-                    message.handle(state);
+                |state: &mut Self, pending_message: Pending<ListMessage<T, S>>| {
+                    pending_message.handle(state);
                 },
             ),
         )

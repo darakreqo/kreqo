@@ -15,6 +15,9 @@ use server_fn_macro_default::server;
 pub async fn get_users() -> Result<Vec<User>, ServerError> {
     let pool = &*DB;
 
+    #[cfg(debug_assertions)]
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     Ok(sqlx::query_as!(User, "SELECT * FROM users")
         .fetch_all(pool)
         .await?)
@@ -23,6 +26,9 @@ pub async fn get_users() -> Result<Vec<User>, ServerError> {
 #[server]
 pub async fn get_user(id: i64) -> Result<User, ServerError> {
     let pool = &*DB;
+
+    #[cfg(debug_assertions)]
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     Ok(
         sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
@@ -35,6 +41,9 @@ pub async fn get_user(id: i64) -> Result<User, ServerError> {
 pub async fn get_user_from_username(username: String) -> Result<User, ServerError> {
     let pool = &*DB;
 
+    #[cfg(debug_assertions)]
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     Ok(
         sqlx::query_as!(User, "SELECT * FROM users WHERE username = $1", username)
             .fetch_one(pool)
@@ -45,6 +54,9 @@ pub async fn get_user_from_username(username: String) -> Result<User, ServerErro
 #[server]
 pub async fn create_user(username: String, password: String) -> Result<User, ServerError> {
     let pool = &*DB;
+
+    #[cfg(debug_assertions)]
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     let salt = SaltString::generate(&mut OsRng);
     let password_hashed = Argon2::default()
@@ -69,6 +81,9 @@ pub async fn create_user(username: String, password: String) -> Result<User, Ser
 pub async fn update_user_username(id: i64, username: String) -> Result<User, ServerError> {
     let pool = &*DB;
 
+    #[cfg(debug_assertions)]
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     let id = sqlx::query_scalar!(
         "UPDATE users SET username = $2 WHERE id = $1 RETURNING id",
         id,
@@ -85,6 +100,9 @@ pub async fn update_user_username(id: i64, username: String) -> Result<User, Ser
 #[server]
 pub async fn delete_user(id: i64) -> Result<i64, ServerError> {
     let pool = &*DB;
+
+    #[cfg(debug_assertions)]
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     Ok(
         sqlx::query_scalar!("DELETE FROM users WHERE id = $1 RETURNING id", id)
