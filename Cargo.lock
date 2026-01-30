@@ -1896,9 +1896,9 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.64"
+version = "0.1.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33e57f83510bb73707521ebaffa789ec8caf86f9657cad665b092b581d40e9fb"
+checksum = "e31bc9ad994ba00e440a8aa5c9ef0ec67d5cb5e5cb0cc7f8b744a35b389cc470"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
@@ -2305,7 +2305,7 @@ checksum = "834e592123b39b7b3ba3fdc4b7e4822fad3ced449010f8229f843fe6dd1a33f1"
 [[package]]
 name = "linebender_include_doc_path"
 version = "0.1.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2369,7 +2369,7 @@ dependencies = [
 [[package]]
 name = "masonry"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "accesskit",
  "dpi",
@@ -2384,7 +2384,7 @@ dependencies = [
 [[package]]
 name = "masonry_core"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "accesskit",
  "anymap3",
@@ -2409,7 +2409,7 @@ dependencies = [
 [[package]]
 name = "masonry_testing"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "accesskit_consumer",
  "futures-intrusive",
@@ -2423,7 +2423,7 @@ dependencies = [
 [[package]]
 name = "masonry_winit"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "accesskit_winit",
  "copypasta",
@@ -4825,7 +4825,7 @@ dependencies = [
 [[package]]
 name = "tree_arena"
 version = "0.2.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "hashbrown 0.16.1",
 ]
@@ -6173,7 +6173,7 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 [[package]]
 name = "xilem"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "masonry",
  "masonry_winit",
@@ -6188,7 +6188,7 @@ dependencies = [
 [[package]]
 name = "xilem_core"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "anymore",
  "hashbrown 0.16.1",
@@ -6198,7 +6198,7 @@ dependencies = [
 [[package]]
 name = "xilem_masonry"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem#d705a04eb9162879be5fdfc64280ded446e7aaff"
+source = "git+https://github.com/linebender/xilem#6def0e0332b8d3bceb99ff195c56cf40706d9e87"
 dependencies = [
  "masonry",
  "tokio",
@@ -6383,18 +6383,18 @@ checksum = "6df3dc4292935e51816d896edcd52aa30bc297907c26167fec31e2b0c6a32524"
 
 [[package]]
 name = "zerocopy"
-version = "0.8.33"
+version = "0.8.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "668f5168d10b9ee831de31933dc111a459c97ec93225beb307aed970d1372dfd"
+checksum = "dafd85c832c1b68bbb4ec0c72c7f6f4fc5179627d2bc7c26b30e4c0cc11e76cc"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.33"
+version = "0.8.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c7962b26b0a8685668b671ee4b54d007a67d4eaf05fda79ac0ecf41e32270f1"
+checksum = "7cb7e4e8436d9db52fbd6625dbf2f45243ab84994a72882ec8227b99e72b439a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6464,9 +6464,9 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfcd145825aace48cff44a8844de64bf75feec3080e0aa5cdbde72961ae51a65"
+checksum = "02aae0f83f69aafc94776e879363e9771d7ecbffe2c7fbb6c14c5e00dfe88439"
 
 [[package]]
 name = "zvariant"
