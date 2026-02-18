@@ -8,7 +8,11 @@ edition = "2024"
 [workspace.dependencies]
 anyhow = "1.0"
 argon2 = "0.5"
+async-trait = "0.1"
 axum = "0.8"
+axum_session = "0.18"
+axum_session_auth = "0.18"
+axum_session_sqlx = "0.7"
 cfg-if = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
@@ -35,3 +39,5 @@ kreqo-learn = { path = "./apps/learn" }
 
 [patch.crates-io]
 gh-workflow = { git = "https://github.com/darakreqo/gh-workflow" }
+server_fn = { git = "https://github.com/darakreqo/leptos", branch = "cookie_store" }
+server_fn_macro = { git = "https://github.com/darakreqo/leptos", branch = "cookie_store" }

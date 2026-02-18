@@ -1,4 +1,4 @@
-use kreqo_core::User;
+use kreqo_core::users::User;
 use kreqo_ui::component::AsyncList;
 use kreqo_ui::theme::BACKGROUND_COLOR;
 use kreqo_ui::user_list::UserStorage;

@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use kreqo_core::User;
 use kreqo_core::errors::ServerError;
-use kreqo_server::database::{create_user, delete_user, get_users, update_user_username};
+use kreqo_core::users::User;
+use kreqo_server::api::{delete_user, get_users, signup, update_user_username};
 use rapidfuzz::distance::jaro;
 use server_fn::error::ServerFnErrorErr;
 use thiserror::Error;
@@ -189,7 +189,7 @@ impl ListStorage for UserStorage {
 
     #[inline(always)]
     async fn create((username, password): (String, String)) -> Result<User, ServerError> {
-        create_user(username, password).await
+        signup(username, password).await
     }
 
     #[inline(always)]

@@ -8,11 +8,13 @@ use thiserror::Error;
 #[derive(Error, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum ServerError {
-    #[error("encountered an API error")]
+    #[error("encountered an API error: {0}")]
     API(ServerFnErrorErr),
-    #[error("encountered a database error")]
+    #[error("authentication required or missing permissions")]
+    Unauthorized,
+    #[error("encountered a database error: {0}")]
     Database(String),
-    #[error("failed to hash password")]
+    #[error("failed to hash password: {0}")]
     PasswordHash(String),
 }
 

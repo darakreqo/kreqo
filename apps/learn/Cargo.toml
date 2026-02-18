@@ -8,4 +8,5 @@ server_fn.workspace = true
 xilem.workspace = true
 
 kreqo-core.workspace = true
+kreqo-server.workspace = true
 kreqo-ui.workspace = true

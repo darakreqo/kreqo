@@ -10,16 +10,21 @@
       },
       {
         "ordinal": 1,
+        "name": "anonymous",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
         "name": "username",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "password",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -30,6 +35,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

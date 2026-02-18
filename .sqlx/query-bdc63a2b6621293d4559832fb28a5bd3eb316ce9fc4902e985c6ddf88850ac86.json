@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM users",
+  "query": "SELECT * FROM users WHERE id <> 1",
   "describe": {
     "columns": [
       {
@@ -10,16 +10,21 @@
       },
       {
         "ordinal": 1,
+        "name": "anonymous",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
         "name": "username",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "password",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -31,8 +36,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "26e7e05427bc7dabcd7815d27764fda2baf4cfe60a2d2d6ee2a1f773dccbbce2"
+  "hash": "bdc63a2b6621293d4559832fb28a5bd3eb316ce9fc4902e985c6ddf88850ac86"
 }
