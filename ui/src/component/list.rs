@@ -5,7 +5,7 @@ pub mod storage;
 use uuid::Uuid;
 use xilem::WidgetView;
 use xilem::core::one_of::Either;
-use xilem::core::{Edit, MessageProxy, Read, fork, lens, map_action, map_state};
+use xilem::core::{MessageProxy, fork, lens, map_action, map_state};
 use xilem::masonry::theme::BASIC_WIDGET_HEIGHT;
 use xilem::style::Style;
 use xilem::tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -33,10 +33,10 @@ where
     fn view(
         &self,
         pending_item_operation: PendingItemOperation,
-    ) -> impl WidgetView<Read<Self>, ItemAction<Self>> + use<Self>;
+    ) -> impl WidgetView<Self, ItemAction<Self>> + use<Self>;
     fn pending_view(
-        create_output: &<Self::CreateForm as Form>::Output,
-    ) -> impl WidgetView<Read<<Self::CreateForm as Form>::Output>> + use<Self> {
+        create_output: &mut <Self::CreateForm as Form>::Output,
+    ) -> impl WidgetView<<Self::CreateForm as Form>::Output> + use<Self> {
         let _ = create_output;
         spinner().height(BASIC_WIDGET_HEIGHT)
     }
@@ -291,8 +291,8 @@ where
         }
     }
 
-    fn get(&self, id: T::Id) -> Option<&T> {
-        self.items.iter().find(|item| item.id() == id)
+    fn get(&mut self, id: T::Id) -> Option<&mut T> {
+        self.items.iter_mut().find(|item| item.id() == id)
     }
 
     fn get_mut(&mut self, id: T::Id) -> Option<&mut T> {
@@ -345,13 +345,12 @@ where
         pending_item_operation: PendingItemOperation,
         id: T::Id,
         item: &T,
-    ) -> impl WidgetView<Edit<Self>> + use<T, S> {
+    ) -> impl WidgetView<Self> + use<T, S> {
         if editing {
             Either::A(map_action(
-                lens(
-                    <T::UpdateForm as Form>::view,
-                    move |state: &mut Self, ()| &mut state.update_form,
-                ),
+                lens(<T::UpdateForm as Form>::view, move |state: &mut Self| {
+                    &mut state.update_form
+                }),
                 move |state: &mut Self, submit| {
                     state.handle_update_submit(id, submit);
                 },
@@ -360,7 +359,7 @@ where
             Either::B(map_action(
                 map_state(
                     item.view(pending_item_operation),
-                    move |state: &mut Self, ()| state.get(id).unwrap(),
+                    move |state: &mut Self| state.get(id).unwrap(),
                 ),
                 move |state: &mut Self, action| {
                     action.handle(state, id);
@@ -369,7 +368,7 @@ where
         }
     }
 
-    fn process_items(&mut self) -> impl Iterator<Item = impl WidgetView<Edit<Self>> + use<T, S>> {
+    fn process_items(&mut self) -> impl Iterator<Item = impl WidgetView<Self> + use<T, S>> {
         self.processed_items = self
             .items
             .iter()
@@ -391,16 +390,19 @@ where
         })
     }
 
-    fn process_pending_items(
-        &self,
-    ) -> impl Iterator<Item = impl WidgetView<Edit<Self>> + use<T, S>> {
+    fn process_pending_items(&mut self) -> impl Iterator<Item = impl WidgetView<Self> + use<T, S>> {
         self.pending_requests
-            .iter()
+            .iter_mut()
             .enumerate()
             .filter_map(|(i, pending_request)| {
                 matches!(pending_request.data, ListRequest::Create(_)).then_some(lens(
                     T::pending_view,
-                    move |state: &mut Self, ()| match &state.pending_requests.get(i).unwrap().data {
+                    move |state: &mut Self| match &mut state
+                        .pending_requests
+                        .get_mut(i)
+                        .unwrap()
+                        .data
+                    {
                         ListRequest::Create(create_output) => create_output,
                         _ => unreachable!(),
                     },
@@ -408,23 +410,22 @@ where
             })
     }
 
-    pub fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<T, S> {
+    pub fn view(&mut self) -> impl WidgetView<Self> + use<T, S> {
         let create_line = map_action(
-            lens(
-                <T::CreateForm as Form>::view,
-                move |state: &mut Self, ()| &mut state.create_form,
-            ),
+            lens(<T::CreateForm as Form>::view, move |state: &mut Self| {
+                &mut state.create_form
+            }),
             |state: &mut Self, submit| {
                 state.handle_create_submit(submit);
             },
         );
         let filter_line = self.filter.as_mut().map(|filter| {
-            map_state(filter.view(), move |state: &mut Self, ()| {
+            map_state(filter.view(), move |state: &mut Self| {
                 state.filter.as_mut().unwrap()
             })
         });
         let sorter_line = self.sorter.as_mut().map(|sorter| {
-            map_state(sorter.view(), move |state: &mut Self, ()| {
+            map_state(sorter.view(), move |state: &mut Self| {
                 state.sorter.as_mut().unwrap()
             })
         });
@@ -449,10 +450,10 @@ where
         )
     }
 
-    pub fn error_view(&mut self) -> Option<impl WidgetView<Edit<Self>> + use<T, S>> {
+    pub fn error_view(&mut self) -> Option<impl WidgetView<Self> + use<T, S>> {
         self.storage.last_error().as_ref().map(|error| {
-            map_state(error.view(), move |state: &mut Self, ()| {
-                state.storage.last_error().as_ref().unwrap()
+            map_state(error.view(), move |state: &mut Self| {
+                state.storage.last_error().as_mut().unwrap()
             })
         })
     }

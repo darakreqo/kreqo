@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 
 use xilem::WidgetView;
-use xilem::core::Edit;
 use xilem::view::flex_row;
 
 use crate::component::list::ListItem;
@@ -13,7 +12,7 @@ where
     type Item;
 
     fn enabled(&self) -> bool;
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<Self>;
+    fn view(&mut self) -> impl WidgetView<Self> + use<Self>;
     fn sort(&self, a: &Self::Item, b: &Self::Item, score_a: f32, score_b: f32) -> Ordering;
 }
 
@@ -30,7 +29,7 @@ where
         false
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<T> {
+    fn view(&mut self) -> impl WidgetView<Self> + use<T> {
         flex_row(())
     }
 

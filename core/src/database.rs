@@ -21,8 +21,8 @@ pub struct SqlUser {
 }
 
 impl SqlUser {
-    fn into_user(self, sql_user_perms: Option<Vec<UserPermission>>) -> User {
-        let permissions = if let Some(user_perms) = sql_user_perms {
+    fn into_user(self, user_perms: Option<Vec<UserPermission>>) -> User {
+        let permissions = if let Some(user_perms) = user_perms {
             user_perms.into_iter().map(|perm| perm.token).collect()
         } else {
             HashSet::new()

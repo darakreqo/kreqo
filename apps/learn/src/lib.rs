@@ -44,7 +44,7 @@ impl AppState {
         let portal = portal(user_list).flex(1.);
         let content = map_state(
             flex_col((portal, error)).gap(0.px()),
-            |state: &mut AppState, ()| &mut state.user_list,
+            |state: &mut AppState| &mut state.user_list,
         );
         std::iter::once(
             window(self.main_window_id, "Kreqo Learn", content)

@@ -7,7 +7,6 @@ use rapidfuzz::distance::jaro;
 use server_fn::error::ServerFnErrorErr;
 use thiserror::Error;
 use xilem::core::one_of::Either;
-use xilem::core::{Edit, Read};
 use xilem::masonry::layout::{AsUnit, Dim};
 use xilem::palette::css::BLACK;
 use xilem::style::Style;
@@ -51,7 +50,7 @@ impl Form for CreateUserForm {
         &mut self.last_error
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, Submit> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
         let username = text_input(
             self.username.clone(),
             |state: &mut CreateUserForm, input| {
@@ -123,7 +122,7 @@ impl Form for UpdateUserForm {
         &mut self.last_error
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, Submit> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
         let username = text_input(
             self.username.clone(),
             |state: &mut UpdateUserForm, input| {
@@ -211,7 +210,7 @@ pub struct UserFilter {
 impl ListFilter for UserFilter {
     type Item = User;
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self> + use<> {
         let username_search = text_input(self.by_username.clone(), |state: &mut Self, input| {
             state.by_username = input;
         })
@@ -299,7 +298,7 @@ impl ListSorter for UserSorter {
         self.enabled
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self> + use<> {
         let sorter = if self.enabled {
             let sort_by = text_button(self.sort_by.to_string(), |state: &mut Self| {
                 state.sort_by = state.sort_by.next();
@@ -350,7 +349,7 @@ impl ListItem for User {
     fn view(
         &self,
         pending_item_operation: PendingItemOperation,
-    ) -> impl WidgetView<Read<Self>, ItemAction<Self>> + use<> {
+    ) -> impl WidgetView<Self, ItemAction<Self>> + use<> {
         let id = prose(format!("{}", self.id))
             .text_alignment(TextAlign::Center)
             .width(25.px());
@@ -376,8 +375,8 @@ impl ListItem for User {
     }
 
     fn pending_view(
-        (username, _): &(String, String),
-    ) -> impl WidgetView<Read<(String, String)>> + use<> {
+        (username, _): &mut (String, String),
+    ) -> impl WidgetView<(String, String)> + use<> {
         let id = prose("⏳").text_alignment(TextAlign::Center).width(25.px());
         let username = prose(username.to_string());
         let edit_button = text_button("Edit", |_| {}).disabled(true);

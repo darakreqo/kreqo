@@ -1,5 +1,5 @@
 use xilem::WidgetView;
-use xilem::core::{Edit, map_action, map_state};
+use xilem::core::{map_action, map_state};
 use xilem::view::{MainAxisAlignment, flex_row};
 
 use crate::component::ErrorView;
@@ -38,13 +38,13 @@ where
         }
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, Submit> + use<Self>;
-    fn error_view(&mut self) -> Option<impl WidgetView<Edit<Self>, Submit> + use<Self>> {
+    fn view(&mut self) -> impl WidgetView<Self, Submit> + use<Self>;
+    fn error_view(&mut self) -> Option<impl WidgetView<Self, Submit> + use<Self>> {
         self.last_error().as_ref().map(|error| {
             map_action(
                 map_state(
                     flex_row(error.view()).main_axis_alignment(MainAxisAlignment::Center),
-                    move |state: &mut Self, ()| state.last_error().as_ref().unwrap(),
+                    move |state: &mut Self| state.last_error().as_mut().unwrap(),
                 ),
                 |_, _| Submit::No,
             )

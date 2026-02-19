@@ -1,5 +1,4 @@
 use xilem::WidgetView;
-use xilem::core::Edit;
 use xilem::view::flex_row;
 
 use crate::component::list::ListItem;
@@ -10,7 +9,7 @@ where
 {
     type Item;
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<Self>;
+    fn view(&mut self) -> impl WidgetView<Self> + use<Self>;
     /// This function should return `(filter, score)` where a true `filter` value means the item
     /// should be included and where `score` is the matching score used in sorting. `score` should
     /// be between `0.0` and `1.0`. To disable filtering completely, please always return
@@ -27,7 +26,7 @@ where
 {
     type Item = T;
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<T> {
+    fn view(&mut self) -> impl WidgetView<Self> + use<T> {
         flex_row(())
     }
 
