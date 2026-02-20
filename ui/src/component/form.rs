@@ -18,6 +18,7 @@ where
     type Error: ErrorView;
 
     fn last_error(&mut self) -> &mut Option<Self::Error>;
+    fn check(&self) -> Result<(), Self::Error>;
     /// This function should do three things: validate the form, reset it and then return the result.
     /// Ideally, the data returned in the output should be taken directly from memory with `std::mem::take`. If not possible, the method `Self::reset` can be used instead.
     fn validate(&mut self) -> Result<Self::Output, Self::Error>;

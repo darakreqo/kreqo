@@ -22,15 +22,15 @@ pub enum UserError {
 }
 
 impl UserError {
-    fn username_color(&self) -> Option<Color> {
+    pub fn username_color(&self) -> Option<Color> {
         matches!(self, UserError::EmptyUsername).then_some(DANGER_COLOR)
     }
 
-    fn password_color(&self) -> Option<Color> {
+    pub fn password_color(&self) -> Option<Color> {
         matches!(self, UserError::EmptyPassword).then_some(DANGER_COLOR)
     }
 
-    fn confirmation_color(&self) -> Option<Color> {
+    pub fn confirmation_color(&self) -> Option<Color> {
         matches!(self, UserError::PasswordConfirmationMismatch).then_some(DANGER_COLOR)
     }
 }
@@ -56,6 +56,7 @@ impl Form for UserLoginForm {
             prose("Username:"),
             text_input(self.username.clone(), |state: &mut Self, input| {
                 state.username = input;
+                state.last_error = state.check().err();
                 Submit::No
             })
             .placeholder("username")
@@ -68,6 +69,7 @@ impl Form for UserLoginForm {
             prose("Password:"),
             text_input(self.password.clone(), |state: &mut Self, input| {
                 state.password = input;
+                state.last_error = state.check().err();
                 Submit::No
             })
             .on_enter(|_, _| Submit::Yes)
@@ -91,13 +93,18 @@ impl Form for UserLoginForm {
         .gap(20.px())
     }
 
-    fn validate(&mut self) -> Result<(String, String), UserError> {
+    fn check(&self) -> Result<(), UserError> {
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
         if self.password.is_empty() {
             return Err(UserError::EmptyPassword);
         }
+        Ok(())
+    }
+
+    fn validate(&mut self) -> Result<(String, String), UserError> {
+        self.check()?;
         Ok((
             std::mem::take(&mut self.username),
             std::mem::take(&mut self.password),
@@ -127,6 +134,7 @@ impl Form for UserSignupForm {
             prose("Username:"),
             text_input(self.username.clone(), |state: &mut Self, input| {
                 state.username = input;
+                state.last_error = state.check().err();
                 Submit::No
             })
             .placeholder("username")
@@ -139,6 +147,7 @@ impl Form for UserSignupForm {
             prose("Password:"),
             text_input(self.password.clone(), |state: &mut Self, input| {
                 state.password = input;
+                state.last_error = state.check().err();
                 Submit::No
             })
             .placeholder("password")
@@ -153,6 +162,7 @@ impl Form for UserSignupForm {
                 self.password_confirmation.clone(),
                 |state: &mut Self, input| {
                     state.password_confirmation = input;
+                    state.last_error = state.check().err();
                     Submit::No
                 },
             )
@@ -180,7 +190,7 @@ impl Form for UserSignupForm {
         .gap(20.px())
     }
 
-    fn validate(&mut self) -> Result<(String, String), UserError> {
+    fn check(&self) -> Result<(), UserError> {
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
@@ -190,6 +200,11 @@ impl Form for UserSignupForm {
         if self.password != self.password_confirmation {
             return Err(UserError::PasswordConfirmationMismatch);
         }
+        Ok(())
+    }
+
+    fn validate(&mut self) -> Result<(String, String), UserError> {
+        self.check()?;
         self.password_confirmation = String::default();
         Ok((
             std::mem::take(&mut self.username),

@@ -21,7 +21,9 @@ use crate::component::list::storage::Retryable;
 use crate::component::list::{
     ItemAction, ListFilter, ListItem, ListSorter, ListStorage, PendingItemOperation,
 };
-use crate::theme::{ApplyClass, BORDERED_ROW, DANGER_COLOR, ROW, ROW_OVERLAY, SUCCESS_COLOR};
+use crate::theme::{
+    ApplyClass, BORDERED_ROW, DANGER_COLOR, ROW, ROW_OVERLAY, SUCCESS_COLOR, constant_border_color,
+};
 
 #[derive(Debug, Default)]
 pub struct UpdateUserForm {
@@ -42,11 +44,16 @@ impl Form for UpdateUserForm {
             self.username.clone(),
             |state: &mut UpdateUserForm, input| {
                 state.username = input;
+                state.last_error = state.check().err();
                 Submit::No
             },
         )
         .on_enter(|_, _| Submit::Yes)
-        .placeholder("Username");
+        .placeholder("Username")
+        .apply_fn(
+            constant_border_color,
+            self.last_error.as_ref().and_then(UserError::username_color),
+        );
         let ok_button = button(label("Ok").color(SUCCESS_COLOR), |_| Submit::Yes);
         let cancel_button = text_button("Cancel", |_| Submit::Cancel);
         let error = self.error_view();
@@ -57,10 +64,15 @@ impl Form for UpdateUserForm {
         .apply(BORDERED_ROW)
     }
 
-    fn validate(&mut self) -> Result<String, UserError> {
+    fn check(&self) -> Result<(), UserError> {
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
+        Ok(())
+    }
+
+    fn validate(&mut self) -> Result<String, UserError> {
+        self.check()?;
         Ok(std::mem::take(&mut self.username))
     }
 }
