@@ -67,7 +67,7 @@ impl AppState {
                     },
                 );
                 let separator = label("OR").color(GRAY);
-                let goto_signup = text_button("Create account", |state: &mut Self| {
+                let goto_signup = text_button("Create an account", |state: &mut Self| {
                     state.page = Page::Signup
                 })
                 .corner_radius(100.);
@@ -113,7 +113,7 @@ impl AppState {
                     },
                 );
                 let separator = label("OR").color(GRAY);
-                let goto_login = text_button("Log into existing account", |state: &mut Self| {
+                let goto_login = text_button("Log into your account", |state: &mut Self| {
                     state.page = Page::Login;
                 })
                 .corner_radius(100.);

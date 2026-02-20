@@ -1,13 +1,15 @@
 use thiserror::Error;
-use xilem::WidgetView;
-use xilem::masonry::layout::Dim;
+use xilem::masonry::layout::AsUnit;
 use xilem::style::Style;
 use xilem::tokio::sync::mpsc::UnboundedSender;
-use xilem::view::{flex_col, text_button, text_input};
+use xilem::view::{FlexSpacer, flex_col, prose, text_input};
+use xilem::{Color, WidgetView};
 
 use crate::component::Form;
 use crate::component::form::Submit;
-use crate::theme::{ACCENT_COLOR, SURFACE_BORDER_COLOR, SURFACE_COLOR};
+use crate::theme::{
+    ACTION_BTN, ApplyClass, CONTAINER, DANGER_COLOR, action_button, constant_border_color, header,
+};
 
 #[derive(Debug, Error)]
 pub enum UserError {
@@ -19,6 +21,20 @@ pub enum UserError {
     PasswordConfirmationMismatch,
 }
 
+impl UserError {
+    fn username_color(&self) -> Option<Color> {
+        matches!(self, UserError::EmptyUsername).then_some(DANGER_COLOR)
+    }
+
+    fn password_color(&self) -> Option<Color> {
+        matches!(self, UserError::EmptyPassword).then_some(DANGER_COLOR)
+    }
+
+    fn confirmation_color(&self) -> Option<Color> {
+        matches!(self, UserError::PasswordConfirmationMismatch).then_some(DANGER_COLOR)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct UserLoginForm {
     username: String,
@@ -26,7 +42,6 @@ pub struct UserLoginForm {
     last_error: Option<UserError>,
 }
 
-// TODO: improve form structure & aesthetic
 impl Form for UserLoginForm {
     type Output = (String, String);
     type Error = UserError;
@@ -36,26 +51,44 @@ impl Form for UserLoginForm {
     }
 
     fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
-        let username = text_input(self.username.clone(), |state: &mut Self, input| {
-            state.username = input;
-            Submit::No
-        })
-        .placeholder("Username");
-        let password = text_input(self.password.clone(), |state: &mut Self, input| {
-            state.password = input;
-            Submit::No
-        })
-        .on_enter(|_, _| Submit::Yes)
-        .placeholder("Password");
-        let login_button = text_button("Log In", |_| Submit::Yes)
-            .width(Dim::Stretch)
-            .background_color(ACCENT_COLOR);
+        let header = header("User Login");
+        let username = flex_col((
+            prose("Username:"),
+            text_input(self.username.clone(), |state: &mut Self, input| {
+                state.username = input;
+                Submit::No
+            })
+            .placeholder("username")
+            .apply_fn(
+                constant_border_color,
+                self.last_error.as_ref().and_then(UserError::username_color),
+            ),
+        ));
+        let password = flex_col((
+            prose("Password:"),
+            text_input(self.password.clone(), |state: &mut Self, input| {
+                state.password = input;
+                Submit::No
+            })
+            .on_enter(|_, _| Submit::Yes)
+            .placeholder("password")
+            .apply_fn(
+                constant_border_color,
+                self.last_error.as_ref().and_then(UserError::password_color),
+            ),
+        ));
+        let login_button = action_button("Log In", |_| Submit::Yes).apply(ACTION_BTN);
         let error = self.error_view();
-        flex_col((username, password, login_button, error))
-            .padding(25.)
-            .corner_radius(15.)
-            .background_color(SURFACE_COLOR)
-            .border(SURFACE_BORDER_COLOR, 1.)
+        flex_col((
+            header,
+            username,
+            password,
+            FlexSpacer::Fixed(0.px()),
+            login_button,
+            error,
+        ))
+        .apply(CONTAINER)
+        .gap(20.px())
     }
 
     fn validate(&mut self) -> Result<(String, String), UserError> {
@@ -80,7 +113,6 @@ pub struct UserSignupForm {
     last_error: Option<UserError>,
 }
 
-// TODO: improve form structure & aesthetic
 impl Form for UserSignupForm {
     type Output = (String, String);
     type Error = UserError;
@@ -90,40 +122,62 @@ impl Form for UserSignupForm {
     }
 
     fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
-        let username = text_input(self.username.clone(), |state: &mut Self, input| {
-            state.username = input;
-            Submit::No
-        })
-        .placeholder("Username");
-        let password = text_input(self.password.clone(), |state: &mut Self, input| {
-            state.password = input;
-            Submit::No
-        })
-        .placeholder("Password");
-        let password_confirmation = text_input(
-            self.password_confirmation.clone(),
-            |state: &mut Self, input| {
-                state.password_confirmation = input;
+        let header = header("Account Creation");
+        let username = flex_col((
+            prose("Username:"),
+            text_input(self.username.clone(), |state: &mut Self, input| {
+                state.username = input;
                 Submit::No
-            },
-        )
-        .on_enter(|_, _| Submit::Yes)
-        .placeholder("Password confirmation");
-        let signup_button = text_button("Sign Up", |_| Submit::Yes)
-            .width(Dim::Stretch)
-            .background_color(ACCENT_COLOR);
+            })
+            .placeholder("username")
+            .apply_fn(
+                constant_border_color,
+                self.last_error.as_ref().and_then(UserError::username_color),
+            ),
+        ));
+        let password = flex_col((
+            prose("Password:"),
+            text_input(self.password.clone(), |state: &mut Self, input| {
+                state.password = input;
+                Submit::No
+            })
+            .placeholder("password")
+            .apply_fn(
+                constant_border_color,
+                self.last_error.as_ref().and_then(UserError::password_color),
+            ),
+        ));
+        let password_confirmation = flex_col((
+            prose("Confirm password:"),
+            text_input(
+                self.password_confirmation.clone(),
+                |state: &mut Self, input| {
+                    state.password_confirmation = input;
+                    Submit::No
+                },
+            )
+            .on_enter(|_, _| Submit::Yes)
+            .placeholder("password confirmation")
+            .apply_fn(
+                constant_border_color,
+                self.last_error
+                    .as_ref()
+                    .and_then(UserError::confirmation_color),
+            ),
+        ));
+        let signup_button = action_button("Sign Up", |_| Submit::Yes).apply(ACTION_BTN);
         let error = self.error_view();
         flex_col((
+            header,
             username,
             password,
             password_confirmation,
+            FlexSpacer::Fixed(1.px()),
             signup_button,
             error,
         ))
-        .padding(25.)
-        .corner_radius(15.)
-        .background_color(SURFACE_COLOR)
-        .border(SURFACE_BORDER_COLOR, 1.)
+        .apply(CONTAINER)
+        .gap(20.px())
     }
 
     fn validate(&mut self) -> Result<(String, String), UserError> {

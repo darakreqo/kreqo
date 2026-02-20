@@ -22,7 +22,7 @@ use crate::component::list::storage::Retryable;
 use crate::component::list::{
     ItemAction, ListFilter, ListItem, ListSorter, ListStorage, PendingItemOperation,
 };
-use crate::theme::{DANGER_COLOR, SUCCESS_COLOR, SURFACE_BORDER_COLOR, SURFACE_COLOR};
+use crate::theme::{ApplyClass, DANGER_COLOR, ROW, SUCCESS_COLOR, SURFACE_COLOR};
 
 #[derive(Debug, Default)]
 pub struct UpdateUserForm {
@@ -55,10 +55,7 @@ impl Form for UpdateUserForm {
             flex_row((username.flex(1.), ok_button, cancel_button)),
             error,
         ))
-        .padding(5.)
-        .corner_radius(10.)
-        .background_color(SURFACE_COLOR)
-        .border(SURFACE_BORDER_COLOR, 1.)
+        .apply(ROW)
     }
 
     fn validate(&mut self) -> Result<String, UserError> {
@@ -283,11 +280,7 @@ impl ListItem for User {
                 ItemAction::Delete
             }))
         };
-        flex_row((id, username.flex(1.), edit_button, delete_button))
-            .padding(5.)
-            .corner_radius(10.)
-            .background_color(SURFACE_COLOR)
-            .border(SURFACE_BORDER_COLOR, 1.)
+        flex_row((id, username.flex(1.), edit_button, delete_button)).apply(ROW)
     }
 
     fn pending_view(
