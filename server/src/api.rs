@@ -27,21 +27,28 @@ cfg_if::cfg_if! {
 }
 
 #[server]
-pub async fn login(username: String, password: String) -> Result<bool, ServerError> {
+pub async fn current_user() -> Result<User, ServerError> {
+    let auth = auth();
+    Ok(auth.current_user.unwrap_or_default())
+}
+
+#[server]
+pub async fn login(username: String, password: String) -> Result<User, ServerError> {
     let pool = pool();
 
-    let sql_user = get_sql_user_from_username(pool, username).await?;
+    let sql_user = get_sql_user_from_username(pool, username)
+        .await
+        .map_err(|_| ServerError::WrongLogin)?;
+
     let parsed_hash = PasswordHash::new(&sql_user.password)?;
-    let matches = Argon2::default()
+    Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
-        .is_ok();
+        .map_err(|_| ServerError::WrongLogin)?;
 
-    if matches {
-        let auth = auth();
-        auth.login_user(sql_user.id);
-    }
+    let auth = auth();
+    auth.login_user(sql_user.id);
 
-    Ok(matches)
+    sql_user.to_user(pool).await
 }
 
 #[server]

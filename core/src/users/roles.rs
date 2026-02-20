@@ -8,6 +8,7 @@ pub enum UserRole {
     Admin,
 }
 
+// TODO: define const ROLES instead
 impl UserRole {
     pub fn permissions(&self) -> Vec<UserPermission> {
         match self {

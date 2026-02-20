@@ -7,6 +7,7 @@ pub const BACKGROUND_COLOR: Color = Color::from_rgb8(0x0a, 0x0a, 0x0a);
 pub const SURFACE_COLOR: Color = Color::from_rgb8(0x14, 0x14, 0x14);
 pub const SURFACE_BORDER_COLOR: Color = Color::from_rgb8(0x1e, 0x1e, 0x1e);
 
+pub const ACCENT_COLOR: Color = Color::from_rgb8(0x00, 0x92, 0xb8);
 pub const SUCCESS_COLOR: Color = Color::from_rgb8(0x37, 0xc8, 0x37);
 pub const DANGER_COLOR: Color = Color::from_rgb8(0xc8, 0x37, 0x37);
 

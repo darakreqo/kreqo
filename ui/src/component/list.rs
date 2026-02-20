@@ -188,7 +188,7 @@ where
     T: ListItem,
     S: ListStorage<Item = T>,
 {
-    fn handle(self, state: &mut AsyncList<T, S>) {
+    fn handle(self, state: &mut AsyncList<T, S>) -> Option<ListRequest<T>> {
         match self.data {
             ListMessage::FetchedAll(items) => state.items = items,
             ListMessage::Created(item) => {
@@ -209,11 +209,11 @@ where
                     state.resolve_pending_request(self.request_id);
                 }
                 *state.storage.last_error() = Some(error);
-                return;
+                return None;
             }
         }
-        state.resolve_pending_request(self.request_id);
         *state.storage.last_error() = None;
+        state.resolve_pending_request(self.request_id)
     }
 }
 
@@ -280,15 +280,16 @@ where
         }
     }
 
-    fn resolve_pending_request(&mut self, request_id: Uuid) {
+    fn resolve_pending_request(&mut self, request_id: Uuid) -> Option<ListRequest<T>> {
         if let Some(index) = self
             .pending_requests
             .iter()
             .enumerate()
             .find_map(|(i, pending)| (request_id == pending.request_id).then_some(i))
         {
-            self.pending_requests.remove(index);
+            return Some(self.pending_requests.remove(index).data);
         }
+        None
     }
 
     fn get(&mut self, id: T::Id) -> Option<&mut T> {
@@ -410,29 +411,52 @@ where
             })
     }
 
-    pub fn view(&mut self) -> impl WidgetView<Self> + use<T, S> {
-        let create_line = map_action(
+    pub fn create_view(&mut self) -> impl WidgetView<Self> + use<T, S> {
+        map_action(
             lens(<T::CreateForm as Form>::view, move |state: &mut Self| {
                 &mut state.create_form
             }),
             |state: &mut Self, submit| {
                 state.handle_create_submit(submit);
             },
-        );
-        let filter_line = self.filter.as_mut().map(|filter| {
+        )
+    }
+
+    // TODO: refactor into list view layout options
+    pub fn view(&mut self) -> impl WidgetView<Self> + use<T, S> {
+        let filter = self.filter.as_mut().map(|filter| {
             map_state(filter.view(), move |state: &mut Self| {
                 state.filter.as_mut().unwrap()
             })
         });
-        let sorter_line = self.sorter.as_mut().map(|sorter| {
+        let sorter = self.sorter.as_mut().map(|sorter| {
             map_state(sorter.view(), move |state: &mut Self| {
                 state.sorter.as_mut().unwrap()
             })
         });
         let items = self.process_items().collect::<Vec<_>>();
         let pending_items = self.process_pending_items().collect::<Vec<_>>();
+        flex_col((filter, sorter, items, pending_items))
+    }
+
+    // TODO: refactor into error display from context
+    pub fn error_view(&mut self) -> Option<impl WidgetView<Self> + use<T, S>> {
+        self.storage.last_error().as_ref().map(|error| {
+            map_state(error.view(), move |state: &mut Self| {
+                state.storage.last_error().as_mut().unwrap()
+            })
+        })
+    }
+
+    // TODO: refactor storage to be more general and ergonomic
+    pub fn worker<Child>(
+        child: Child,
+    ) -> impl WidgetView<Self, Option<ListRequest<T>>> + use<T, S, Child>
+    where
+        Child: WidgetView<Self>,
+    {
         fork(
-            flex_col((create_line, filter_line, sorter_line, items, pending_items)),
+            map_action(child, |_, _| None),
             worker(
                 |proxy, mut rx: UnboundedReceiver<Pending<ListRequest<T>>>| async move {
                     while let Some(pending_request) = rx.recv().await {
@@ -444,17 +468,9 @@ where
                     state.send_request(ListRequest::FetchAll);
                 },
                 |state: &mut Self, pending_message: Pending<ListMessage<T, S>>| {
-                    pending_message.handle(state);
+                    pending_message.handle(state)
                 },
             ),
         )
-    }
-
-    pub fn error_view(&mut self) -> Option<impl WidgetView<Self> + use<T, S>> {
-        self.storage.last_error().as_ref().map(|error| {
-            map_state(error.view(), move |state: &mut Self| {
-                state.storage.last_error().as_mut().unwrap()
-            })
-        })
     }
 }

@@ -1,6 +1,6 @@
 use sqlx::FromRow;
 
-#[derive(FromRow, Default, Debug)]
+#[derive(FromRow, Default, Debug, Clone)]
 pub struct UserPermission {
     pub token: String,
 }

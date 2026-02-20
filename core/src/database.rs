@@ -1,9 +1,8 @@
-use std::collections::HashSet;
-
 use argon2::Argon2;
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::{PasswordHasher, SaltString};
 use chrono::{DateTime, Utc};
+use hashbrown::{HashMap, HashSet};
 use sqlx::{FromRow, PgPool};
 
 use crate::errors::ServerError;
@@ -11,7 +10,7 @@ use crate::users::User;
 use crate::users::permissions::UserPermission;
 use crate::users::roles::UserRole;
 
-#[derive(FromRow, Debug)]
+#[derive(FromRow, Clone, Debug)]
 pub struct SqlUser {
     pub id: i64,
     pub anonymous: bool,
@@ -35,35 +34,23 @@ impl SqlUser {
             permissions,
         }
     }
+
+    pub async fn to_user(self, pool: &PgPool) -> Result<User, ServerError> {
+        let user_perms = get_user_perms(pool, self.id).await?;
+        Ok(self.into_user(Some(user_perms)))
+    }
 }
 
-pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, ServerError> {
-    let sql_users = sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE id <> 1")
-        .fetch_all(pool)
-        .await?;
-    Ok(sql_users
-        .into_iter()
-        .map(|sql_user| sql_user.into_user(None))
-        .collect())
+#[derive(FromRow)]
+pub struct SqlUserPermission {
+    pub user_id: i64,
+    pub token: String,
 }
 
-pub async fn get_sql_user(pool: &PgPool, id: i64) -> Result<SqlUser, ServerError> {
-    Ok(
-        sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE id = $1", id)
-            .fetch_one(pool)
-            .await?,
-    )
-}
-
-pub async fn get_sql_user_from_username(
-    pool: &PgPool,
-    username: String,
-) -> Result<SqlUser, ServerError> {
-    Ok(
-        sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE username = $1", username)
-            .fetch_one(pool)
-            .await?,
-    )
+impl From<SqlUserPermission> for UserPermission {
+    fn from(val: SqlUserPermission) -> Self {
+        UserPermission { token: val.token }
+    }
 }
 
 pub async fn get_user_perms(
@@ -97,20 +84,62 @@ pub async fn add_user_perms(
     Ok(())
 }
 
+pub async fn get_sql_users(pool: &PgPool) -> Result<Vec<SqlUser>, ServerError> {
+    Ok(
+        sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE id <> 1")
+            .fetch_all(pool)
+            .await?,
+    )
+}
+
+pub async fn get_sql_user(pool: &PgPool, id: i64) -> Result<SqlUser, ServerError> {
+    Ok(
+        sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE id = $1", id)
+            .fetch_one(pool)
+            .await?,
+    )
+}
+
+pub async fn get_sql_user_from_username(
+    pool: &PgPool,
+    username: String,
+) -> Result<SqlUser, ServerError> {
+    Ok(
+        sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE username = $1", username)
+            .fetch_one(pool)
+            .await?,
+    )
+}
+
+pub async fn get_users(pool: &PgPool) -> Result<Vec<User>, ServerError> {
+    let sql_users = get_sql_users(pool).await?;
+    let mut perms_map = HashMap::with_capacity(sql_users.len());
+    for sql_user_perm in sqlx::query_as!(SqlUserPermission, "SELECT * FROM user_permissions")
+        .fetch_all(pool)
+        .await?
+    {
+        let entry = perms_map.entry(sql_user_perm.user_id).or_insert(Vec::new());
+        entry.push(sql_user_perm.into());
+    }
+    Ok(sql_users
+        .iter()
+        .map(|sql_user| {
+            sql_user
+                .clone()
+                .into_user(perms_map.get(&sql_user.id).cloned())
+        })
+        .collect())
+}
+
 pub async fn get_user(pool: &PgPool, id: i64) -> Result<User, ServerError> {
-    let sql_user = sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE id = $1", id)
-        .fetch_one(pool)
-        .await?;
-    let user_perms = get_user_perms(pool, sql_user.id).await?;
-    Ok(sql_user.into_user(Some(user_perms)))
+    get_sql_user(pool, id).await?.to_user(pool).await
 }
 
 pub async fn get_user_from_username(pool: &PgPool, username: String) -> Result<User, ServerError> {
-    let sql_user = sqlx::query_as!(SqlUser, "SELECT * FROM users WHERE username = $1", username)
-        .fetch_one(pool)
-        .await?;
-    let user_perms = get_user_perms(pool, sql_user.id).await?;
-    Ok(sql_user.into_user(Some(user_perms)))
+    get_sql_user_from_username(pool, username)
+        .await?
+        .to_user(pool)
+        .await
 }
 
 pub async fn create_user(

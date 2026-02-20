@@ -16,6 +16,7 @@ axum_session_sqlx = "0.7"
 cfg-if = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
+hashbrown = { version = "0.16", features = ["serde"] }
 rapidfuzz = "0.5"
 rs-fsrs = "1.2"
 serde = { version = "1.0", features = ["derive"] }

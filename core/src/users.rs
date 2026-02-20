@@ -1,12 +1,11 @@
 pub mod permissions;
 pub mod roles;
 
-use std::collections::HashSet;
-
 use anyhow::anyhow;
 use async_trait::async_trait;
 use axum_session_auth::{Authentication, HasPermission};
 use chrono::{DateTime, Utc};
+use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 

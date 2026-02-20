@@ -1928,6 +1928,8 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash 0.2.0",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -2362,6 +2364,7 @@ dependencies = [
  "async-trait",
  "axum_session_auth",
  "chrono",
+ "hashbrown 0.16.1",
  "serde",
  "server_fn",
  "sqlx",

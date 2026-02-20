@@ -5,9 +5,8 @@ use kreqo_core::users::User;
 use kreqo_server::api::{delete_user, get_users, signup, update_user_username};
 use rapidfuzz::distance::jaro;
 use server_fn::error::ServerFnErrorErr;
-use thiserror::Error;
 use xilem::core::one_of::Either;
-use xilem::masonry::layout::{AsUnit, Dim};
+use xilem::masonry::layout::AsUnit;
 use xilem::palette::css::BLACK;
 use xilem::style::Style;
 use xilem::view::{
@@ -16,6 +15,7 @@ use xilem::view::{
 };
 use xilem::{TextAlign, WidgetView};
 
+use crate::auth_forms::{UserError, UserSignupForm};
 use crate::component::Form;
 use crate::component::form::Submit;
 use crate::component::list::storage::Retryable;
@@ -23,90 +23,6 @@ use crate::component::list::{
     ItemAction, ListFilter, ListItem, ListSorter, ListStorage, PendingItemOperation,
 };
 use crate::theme::{DANGER_COLOR, SUCCESS_COLOR, SURFACE_BORDER_COLOR, SURFACE_COLOR};
-
-#[derive(Debug, Error)]
-pub enum UserError {
-    #[error("username is required")]
-    EmptyUsername,
-    #[error("password is required")]
-    EmptyPassword,
-    #[error("password confirmation doesn't match")]
-    PasswordConfirmationMismatch,
-}
-
-#[derive(Debug, Default)]
-pub struct CreateUserForm {
-    username: String,
-    password: String,
-    password_confirmation: String,
-    last_error: Option<UserError>,
-}
-
-impl Form for CreateUserForm {
-    type Output = (String, String);
-    type Error = UserError;
-
-    fn last_error(&mut self) -> &mut Option<UserError> {
-        &mut self.last_error
-    }
-
-    fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
-        let username = text_input(
-            self.username.clone(),
-            |state: &mut CreateUserForm, input| {
-                state.username = input;
-                Submit::No
-            },
-        )
-        .placeholder("Username");
-        let password = text_input(
-            self.password.clone(),
-            |state: &mut CreateUserForm, input| {
-                state.password = input;
-                Submit::No
-            },
-        )
-        .placeholder("Password");
-        let password_confirmation = text_input(
-            self.password_confirmation.clone(),
-            |state: &mut CreateUserForm, input| {
-                state.password_confirmation = input;
-                Submit::No
-            },
-        )
-        .placeholder("Password confirmation");
-        let signup_button = text_button("Signup", |_| Submit::Yes).width(Dim::Stretch);
-        let error = self.error_view();
-        flex_col((
-            username,
-            password,
-            password_confirmation,
-            signup_button,
-            error,
-        ))
-        .padding(25.)
-        .corner_radius(15.)
-        .background_color(SURFACE_COLOR)
-        .border(SURFACE_BORDER_COLOR, 1.)
-    }
-
-    fn validate(&mut self) -> Result<(String, String), UserError> {
-        if self.username.is_empty() {
-            return Err(UserError::EmptyUsername);
-        }
-        if self.password.is_empty() {
-            return Err(UserError::EmptyPassword);
-        }
-        if self.password != self.password_confirmation {
-            return Err(UserError::PasswordConfirmationMismatch);
-        }
-        self.password_confirmation = String::default();
-        Ok((
-            std::mem::take(&mut self.username),
-            std::mem::take(&mut self.password),
-        ))
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct UpdateUserForm {
@@ -337,7 +253,7 @@ impl ListSorter for UserSorter {
 
 impl ListItem for User {
     type Id = i64;
-    type CreateForm = CreateUserForm;
+    type CreateForm = UserSignupForm;
     type UpdateForm = UpdateUserForm;
     type Filter = UserFilter;
     type Sorter = UserSorter;
