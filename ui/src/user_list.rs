@@ -7,7 +7,6 @@ use rapidfuzz::distance::jaro;
 use server_fn::error::ServerFnErrorErr;
 use xilem::core::one_of::Either;
 use xilem::masonry::layout::AsUnit;
-use xilem::palette::css::BLACK;
 use xilem::style::Style;
 use xilem::view::{
     FlexExt, MainAxisAlignment, button, flex_col, flex_row, label, prose, spinner, text_button,
@@ -22,7 +21,7 @@ use crate::component::list::storage::Retryable;
 use crate::component::list::{
     ItemAction, ListFilter, ListItem, ListSorter, ListStorage, PendingItemOperation,
 };
-use crate::theme::{ApplyClass, DANGER_COLOR, ROW, SUCCESS_COLOR, SURFACE_COLOR};
+use crate::theme::{ApplyClass, BORDERED_ROW, DANGER_COLOR, ROW, ROW_OVERLAY, SUCCESS_COLOR};
 
 #[derive(Debug, Default)]
 pub struct UpdateUserForm {
@@ -55,7 +54,7 @@ impl Form for UpdateUserForm {
             flex_row((username.flex(1.), ok_button, cancel_button)),
             error,
         ))
-        .apply(ROW)
+        .apply(BORDERED_ROW)
     }
 
     fn validate(&mut self) -> Result<String, UserError> {
@@ -280,7 +279,7 @@ impl ListItem for User {
                 ItemAction::Delete
             }))
         };
-        flex_row((id, username.flex(1.), edit_button, delete_button)).apply(ROW)
+        flex_row((id, username.flex(1.), edit_button, delete_button)).apply(BORDERED_ROW)
     }
 
     fn pending_view(
@@ -290,15 +289,11 @@ impl ListItem for User {
         let username = prose(username.to_string());
         let edit_button = text_button("Edit", |_| {}).disabled(true);
         let delete_button = text_button("Delete", |_| {}).disabled(true);
-        let pending_layer = flex_row((id, username.flex(1.), edit_button, delete_button))
-            .padding(5.)
-            .corner_radius(10.)
-            .background_color(SURFACE_COLOR);
+        let pending_layer =
+            flex_row((id, username.flex(1.), edit_button, delete_button)).apply(ROW);
         let spinner_layer = flex_row(spinner())
             .main_axis_alignment(MainAxisAlignment::Center)
-            .padding(5.)
-            .corner_radius(10.)
-            .background_color(BLACK.with_alpha(0.25));
+            .apply(ROW_OVERLAY);
         zstack((pending_layer, spinner_layer))
     }
 }

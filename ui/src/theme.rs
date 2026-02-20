@@ -4,7 +4,7 @@ use xilem::masonry::layout::Dim;
 use xilem::masonry::properties::{Dimensions, FocusedBorderColor};
 use xilem::masonry::theme::ZYNC_600;
 use xilem::masonry::widgets::TextInput;
-use xilem::palette::css::WHITE;
+use xilem::palette::css::{BLACK, WHITE};
 use xilem::style::{
     ActiveBackground, Background, BorderColor, BorderWidth, CornerRadius, HoveredBorderColor,
     Padding,
@@ -13,6 +13,8 @@ use xilem::view::{Button, Label, PointerButton, Prose, button, label, prose};
 use xilem::{Color, FontWeight, TextAlign};
 
 use crate::class::Class;
+
+pub const DARK_OVERLAY: Color = BLACK.with_alpha(0.25);
 
 pub const BACKGROUND_COLOR: Color = Color::from_rgb8(0x0a, 0x0a, 0x0a);
 pub const SURFACE_COLOR: Color = Color::from_rgb8(0x14, 0x14, 0x14);
@@ -39,18 +41,22 @@ pub const SURFACE: (Background, BorderWidth, BorderColor) = (
 pub const CONTAINER: (Padding, CornerRadius, Background, BorderWidth, BorderColor) = (
     Padding::all(25.),
     CornerRadius::all(15.),
-    Background::Color(SURFACE_COLOR),
-    BorderWidth::all(1.),
-    BorderColor::new(SURFACE_BORDER_COLOR),
+    SURFACE.0,
+    SURFACE.1,
+    SURFACE.2,
 );
 
-pub const ROW: (Padding, CornerRadius, Background, BorderWidth, BorderColor) = (
+pub const ROW: (Padding, CornerRadius, Background) = (
     Padding::all(5.),
     CornerRadius::all(10.),
     Background::Color(SURFACE_COLOR),
-    BorderWidth::all(1.),
-    BorderColor::new(SURFACE_BORDER_COLOR),
 );
+
+pub const ROW_OVERLAY: (Padding, CornerRadius, Background) =
+    (ROW.0, ROW.1, Background::Color(DARK_OVERLAY));
+
+pub const BORDERED_ROW: (Padding, CornerRadius, Background, BorderWidth, BorderColor) =
+    (ROW.0, ROW.1, SURFACE.0, SURFACE.1, SURFACE.2);
 
 pub const ACTION_BTN: (
     Dimensions,
