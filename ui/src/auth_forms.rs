@@ -1,14 +1,17 @@
 use thiserror::Error;
 use xilem::masonry::layout::AsUnit;
+use xilem::palette::css::GRAY;
 use xilem::style::Style;
 use xilem::tokio::sync::mpsc::UnboundedSender;
-use xilem::view::{FlexSpacer, flex_col, prose, text_input};
+use xilem::view::{FlexSpacer, flex_col, flex_row, inline_prose, prose, text_input};
 use xilem::{Color, WidgetView};
+use zxcvbn::{Score, zxcvbn};
 
 use crate::component::Form;
 use crate::component::form::Submit;
 use crate::theme::{
-    ACTION_BTN, ApplyClass, CONTAINER, DANGER_COLOR, action_button, constant_border_color, header,
+    ACTION_BTN, ApplyClass, CONTAINER, DANGER_COLOR, SUCCESS_COLOR, WARNING_COLOR, action_button,
+    constant_border_color, header,
 };
 
 #[derive(Debug, Error)]
@@ -19,6 +22,8 @@ pub enum UserError {
     EmptyPassword,
     #[error("password confirmation doesn't match")]
     PasswordConfirmationMismatch,
+    #[error("password is too weak")]
+    WeakPassword,
 }
 
 impl UserError {
@@ -93,7 +98,7 @@ impl Form for UserLoginForm {
         .gap(20.px())
     }
 
-    fn check(&self) -> Result<(), UserError> {
+    fn check(&mut self) -> Result<(), UserError> {
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
@@ -112,12 +117,25 @@ impl Form for UserLoginForm {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct UserSignupForm {
     username: String,
     password: String,
     password_confirmation: String,
+    score: Score,
     last_error: Option<UserError>,
+}
+
+impl Default for UserSignupForm {
+    fn default() -> Self {
+        Self {
+            username: String::new(),
+            password: String::new(),
+            password_confirmation: String::new(),
+            score: Score::Zero,
+            last_error: None,
+        }
+    }
 }
 
 impl Form for UserSignupForm {
@@ -155,6 +173,23 @@ impl Form for UserSignupForm {
                 constant_border_color,
                 self.last_error.as_ref().and_then(UserError::password_color),
             ),
+            (!self.password.is_empty()).then(|| {
+                let (color1, color2) = match self.score {
+                    Score::Zero | Score::One | Score::Two => (GRAY, DANGER_COLOR),
+                    Score::Three => (GRAY, WARNING_COLOR),
+                    _ => (SUCCESS_COLOR, SUCCESS_COLOR),
+                };
+                let (text1, text2) = match self.score {
+                    Score::Zero | Score::One => ("️ ❌ Password strength:", "Very weak"),
+                    Score::Two => ("️ ❌ Password strength:", "Weak"),
+                    Score::Three => ("️ ❌ Password strength:", "Medium"),
+                    _ => ("️ ✓ Password strength:", "Strong"),
+                };
+                flex_row((
+                    inline_prose(text1).text_color(color1),
+                    inline_prose(text2).text_color(color2),
+                ))
+            }),
         ));
         let password_confirmation = flex_col((
             prose("Confirm password:"),
@@ -190,12 +225,16 @@ impl Form for UserSignupForm {
         .gap(20.px())
     }
 
-    fn check(&self) -> Result<(), UserError> {
+    fn check(&mut self) -> Result<(), UserError> {
+        self.score = zxcvbn(self.password.as_str(), &[self.username.as_str()]).score();
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
         if self.password.is_empty() {
             return Err(UserError::EmptyPassword);
+        }
+        if self.score < Score::Four {
+            return Err(UserError::WeakPassword);
         }
         if self.password != self.password_confirmation {
             return Err(UserError::PasswordConfirmationMismatch);

@@ -64,7 +64,7 @@ impl Form for UpdateUserForm {
         .apply(BORDERED_ROW)
     }
 
-    fn check(&self) -> Result<(), UserError> {
+    fn check(&mut self) -> Result<(), UserError> {
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }

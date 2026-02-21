@@ -23,8 +23,9 @@ pub const SURFACE_BORDER_COLOR: Color = Color::from_rgb8(0x1e, 0x1e, 0x1e);
 pub const ACCENT_COLOR: Color = Color::from_rgb8(0x00, 0x92, 0xb8);
 pub const ACTIVE_ACCENT_COLOR: Color = Color::from_rgb8(0x00, 0xb8, 0xdb);
 
-pub const SUCCESS_COLOR: Color = Color::from_rgb8(0x37, 0xc8, 0x37);
-pub const DANGER_COLOR: Color = Color::from_rgb8(0xc8, 0x37, 0x37);
+pub const SUCCESS_COLOR: Color = Color::from_rgb8(0x00, 0xbc, 0x7d);
+pub const WARNING_COLOR: Color = Color::from_rgb8(0xfd, 0x9a, 0x00);
+pub const DANGER_COLOR: Color = Color::from_rgb8(0xfb, 0x2c, 0x36);
 
 pub fn apply_theme(def_props: &mut DefaultProperties) {
     def_props.insert::<TextInput, Background>(Background::Color(
