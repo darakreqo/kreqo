@@ -8,7 +8,7 @@ use axum_session_auth::{AuthConfig, AuthSessionLayer};
 use axum_session_sqlx::SessionPgPool;
 use kreqo_core::users::User;
 use kreqo_server::SERVER_ADDRESS;
-use kreqo_server::context::{auth_context_middleware, pool};
+use kreqo_server::context::{auth_context_middleware, auto_cleanup, pool};
 use server_fn::axum::handle_server_fn;
 use sqlx::PgPool;
 use tokio::net::TcpListener;
@@ -54,6 +54,8 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::debug!("listening on {}", listener.local_addr()?);
     axum::serve(listener, router).await?;
+
+    tokio::spawn(auto_cleanup());
 
     Ok(())
 }

@@ -7,7 +7,7 @@ use axum::middleware::Next;
 use axum::response::Response;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
-use tokio::task_local;
+use tokio::{task_local, time};
 
 use crate::KreqoAuth;
 
@@ -43,4 +43,11 @@ pub fn auth() -> KreqoAuth {
 #[inline]
 pub fn context() -> (&'static PgPool, KreqoAuth) {
     (pool(), auth())
+}
+
+pub async fn auto_cleanup() {
+    loop {
+        time::sleep(Duration::from_mins(5)).await;
+        let _ = auth().session.get_store().cleanup().await;
+    }
 }
