@@ -8,6 +8,8 @@ publish = false
 gh-workflow = "*"
 serde_json = "*"
 
+kreqo-core.workspace = true
+
 [[test]]
 name = "ci"
 path = "ci.rs"
