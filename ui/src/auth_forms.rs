@@ -1,17 +1,18 @@
 use thiserror::Error;
 use xilem::masonry::layout::AsUnit;
 use xilem::palette::css::GRAY;
-use xilem::style::Style;
+use xilem::style::{Padding, Style};
 use xilem::tokio::sync::mpsc::UnboundedSender;
-use xilem::view::{FlexSpacer, flex_col, flex_row, inline_prose, prose, text_input};
+use xilem::view::{CrossAxisAlignment, flex_col, flex_row, inline_prose, text_input, zstack};
 use xilem::{Color, WidgetView};
+use zxcvbn::feedback::Feedback;
 use zxcvbn::{Score, zxcvbn};
 
-use crate::component::Form;
 use crate::component::form::Submit;
+use crate::component::{Form, action_button, form_input_label, header};
 use crate::theme::{
-    ACTION_BTN, ApplyClass, CONTAINER, DANGER_COLOR, SUCCESS_COLOR, WARNING_COLOR, action_button,
-    constant_border_color, header,
+    ACCENT_COLOR, ApplyClass, CONTAINER, DANGER_COLOR, FORM_INPUT, SUCCESS_COLOR, WARNING_COLOR,
+    form_border_color,
 };
 
 #[derive(Debug, Error)]
@@ -40,6 +41,11 @@ impl UserError {
     }
 }
 
+pub enum AuthRequest {
+    Login(String, String),
+    Logout,
+}
+
 #[derive(Debug, Default)]
 pub struct UserLoginForm {
     username: String,
@@ -55,23 +61,25 @@ impl Form for UserLoginForm {
         &mut self.last_error
     }
 
+    // TODO: refactor into form fields
     fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
         let header = header("User Login");
-        let username = flex_col((
-            prose("Username:"),
+        let username = zstack((
             text_input(self.username.clone(), |state: &mut Self, input| {
                 state.username = input;
                 state.last_error = state.check().err();
                 Submit::No
             })
             .placeholder("username")
-            .apply_fn(
-                constant_border_color,
+            .text_color(ACCENT_COLOR)
+            .class(FORM_INPUT)
+            .apply(
+                form_border_color,
                 self.last_error.as_ref().and_then(UserError::username_color),
             ),
+            form_input_label("Username"),
         ));
-        let password = flex_col((
-            prose("Password:"),
+        let password = zstack((
             text_input(self.password.clone(), |state: &mut Self, input| {
                 state.password = input;
                 state.last_error = state.check().err();
@@ -79,23 +87,19 @@ impl Form for UserLoginForm {
             })
             .on_enter(|_, _| Submit::Yes)
             .placeholder("password")
-            .apply_fn(
-                constant_border_color,
+            .text_color(ACCENT_COLOR)
+            .class(FORM_INPUT)
+            .apply(
+                form_border_color,
                 self.last_error.as_ref().and_then(UserError::password_color),
             ),
+            form_input_label("Password"),
         ));
-        let login_button = action_button("Log In", |_| Submit::Yes).apply(ACTION_BTN);
+        let login_button = action_button("Log In", |_| Submit::Yes);
         let error = self.error_view();
-        flex_col((
-            header,
-            username,
-            password,
-            FlexSpacer::Fixed(0.px()),
-            login_button,
-            error,
-        ))
-        .apply(CONTAINER)
-        .gap(20.px())
+        flex_col((header, username, password, login_button, error))
+            .class(CONTAINER)
+            .gap(30.px())
     }
 
     fn check(&mut self) -> Result<(), UserError> {
@@ -117,12 +121,30 @@ impl Form for UserLoginForm {
     }
 }
 
+impl UserLoginForm {
+    pub fn handle_submit(&mut self, submit: Submit, sender: Option<&UnboundedSender<AuthRequest>>) {
+        match submit {
+            Submit::No => (),
+            Submit::Cancel => {
+                self.reset();
+            }
+            Submit::Yes => {
+                let output = self.submit();
+                if let (Some((username, password)), Some(sender)) = (output, sender) {
+                    let _ = sender.send(AuthRequest::Login(username, password));
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct UserSignupForm {
     username: String,
     password: String,
     password_confirmation: String,
     score: Score,
+    feedback: Option<Feedback>,
     last_error: Option<UserError>,
 }
 
@@ -133,6 +155,7 @@ impl Default for UserSignupForm {
             password: String::new(),
             password_confirmation: String::new(),
             score: Score::Zero,
+            feedback: None,
             last_error: None,
         }
     }
@@ -148,31 +171,37 @@ impl Form for UserSignupForm {
 
     fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
         let header = header("Account Creation");
-        let username = flex_col((
-            prose("Username:"),
+        let username = zstack((
             text_input(self.username.clone(), |state: &mut Self, input| {
                 state.username = input;
                 state.last_error = state.check().err();
                 Submit::No
             })
             .placeholder("username")
-            .apply_fn(
-                constant_border_color,
+            .text_color(ACCENT_COLOR)
+            .class(FORM_INPUT)
+            .apply(
+                form_border_color,
                 self.last_error.as_ref().and_then(UserError::username_color),
             ),
+            form_input_label("Username"),
         ));
         let password = flex_col((
-            prose("Password:"),
-            text_input(self.password.clone(), |state: &mut Self, input| {
-                state.password = input;
-                state.last_error = state.check().err();
-                Submit::No
-            })
-            .placeholder("password")
-            .apply_fn(
-                constant_border_color,
-                self.last_error.as_ref().and_then(UserError::password_color),
-            ),
+            zstack((
+                text_input(self.password.clone(), |state: &mut Self, input| {
+                    state.password = input;
+                    state.last_error = state.check().err();
+                    Submit::No
+                })
+                .placeholder("password")
+                .text_color(ACCENT_COLOR)
+                .class(FORM_INPUT)
+                .apply(
+                    form_border_color,
+                    self.last_error.as_ref().and_then(UserError::password_color),
+                ),
+                form_input_label("Password"),
+            )),
             (!self.password.is_empty()).then(|| {
                 let (color1, color2) = match self.score {
                     Score::Zero | Score::One | Score::Two => (GRAY, DANGER_COLOR),
@@ -180,19 +209,44 @@ impl Form for UserSignupForm {
                     _ => (SUCCESS_COLOR, SUCCESS_COLOR),
                 };
                 let (text1, text2) = match self.score {
-                    Score::Zero | Score::One => ("️ ❌ Password strength:", "Very weak"),
-                    Score::Two => ("️ ❌ Password strength:", "Weak"),
-                    Score::Three => ("️ ❌ Password strength:", "Medium"),
-                    _ => ("️ ✓ Password strength:", "Strong"),
+                    Score::Zero | Score::One => ("️Password strength:", "Very weak"),
+                    Score::Two => ("️Password strength:", "Weak"),
+                    Score::Three => ("️Password strength:", "Medium"),
+                    _ => ("️✓ Password strength:", "Strong"),
                 };
-                flex_row((
-                    inline_prose(text1).text_color(color1),
-                    inline_prose(text2).text_color(color2),
+                flex_col((
+                    flex_row((
+                        inline_prose(text1).text_color(color1),
+                        inline_prose(text2).text_color(color2),
+                    ))
+                    .padding(3.),
+                    self.feedback.as_ref().map(|feedback| {
+                        (
+                            feedback.warning().map(|warning| {
+                                inline_prose(format!(" ❌ {}", warning))
+                                    .text_size(13.)
+                                    .text_color(GRAY)
+                                    .padding(3.)
+                            }),
+                            feedback
+                                .suggestions()
+                                .iter()
+                                .map(|suggestion| {
+                                    inline_prose(format!(" ✓ {}", suggestion))
+                                        .text_size(13.)
+                                        .text_color(GRAY)
+                                        .padding(3.)
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    }),
                 ))
+                .cross_axis_alignment(CrossAxisAlignment::Start)
+                .gap(0.px())
+                .padding(Padding::horizontal(19.))
             }),
         ));
-        let password_confirmation = flex_col((
-            prose("Confirm password:"),
+        let password_confirmation = zstack((
             text_input(
                 self.password_confirmation.clone(),
                 |state: &mut Self, input| {
@@ -202,31 +256,36 @@ impl Form for UserSignupForm {
                 },
             )
             .on_enter(|_, _| Submit::Yes)
-            .placeholder("password confirmation")
-            .apply_fn(
-                constant_border_color,
+            .placeholder("confirm password")
+            .text_color(ACCENT_COLOR)
+            .class(FORM_INPUT)
+            .apply(
+                form_border_color,
                 self.last_error
                     .as_ref()
                     .and_then(UserError::confirmation_color),
             ),
+            form_input_label("Password Confirmation"),
         ));
-        let signup_button = action_button("Sign Up", |_| Submit::Yes).apply(ACTION_BTN);
+        let signup_button = action_button("Sign Up", |_| Submit::Yes);
         let error = self.error_view();
         flex_col((
             header,
             username,
             password,
             password_confirmation,
-            FlexSpacer::Fixed(1.px()),
             signup_button,
             error,
         ))
-        .apply(CONTAINER)
-        .gap(20.px())
+        .class(CONTAINER)
+        .gap(30.px())
     }
 
     fn check(&mut self) -> Result<(), UserError> {
-        self.score = zxcvbn(self.password.as_str(), &[self.username.as_str()]).score();
+        let entropy = zxcvbn(self.password.as_str(), &[self.username.as_str()]);
+        self.score = entropy.score();
+        self.feedback = entropy.feedback().cloned();
+
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
@@ -239,6 +298,7 @@ impl Form for UserSignupForm {
         if self.password != self.password_confirmation {
             return Err(UserError::PasswordConfirmationMismatch);
         }
+
         Ok(())
     }
 
@@ -249,26 +309,5 @@ impl Form for UserSignupForm {
             std::mem::take(&mut self.username),
             std::mem::take(&mut self.password),
         ))
-    }
-}
-
-impl UserLoginForm {
-    pub fn handle_submit(
-        &mut self,
-        submit: Submit,
-        sender: Option<&UnboundedSender<(String, String)>>,
-    ) {
-        match submit {
-            Submit::No => (),
-            Submit::Cancel => {
-                self.reset();
-            }
-            Submit::Yes => {
-                let output = self.submit();
-                if let (Some(output), Some(sender)) = (output, sender) {
-                    let _ = sender.send(output);
-                }
-            }
-        }
     }
 }

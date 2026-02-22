@@ -1,8 +1,8 @@
 use kreqo_core::users::User;
-use kreqo_server::api::login;
-use kreqo_ui::auth_forms::UserLoginForm;
+use kreqo_server::api::{current_user, login, logout};
+use kreqo_ui::auth_forms::{AuthRequest, UserLoginForm};
 use kreqo_ui::component::list::ListRequest;
-use kreqo_ui::component::{AsyncList, Form};
+use kreqo_ui::component::{AsyncList, Form, action_button, logo, user_profile_overview};
 use kreqo_ui::theme::BACKGROUND_COLOR;
 use kreqo_ui::user_list::UserStorage;
 use xilem::core::one_of::OneOf3;
@@ -12,12 +12,13 @@ use xilem::palette::css::GRAY;
 use xilem::style::Style;
 use xilem::tokio::sync::mpsc::UnboundedSender;
 use xilem::view::{
-    FlexExt, MainAxisAlignment, flex_col, flex_row, label, portal, sized_box, text_button, worker,
+    FlexExt, MainAxisAlignment, flex_col, flex_row, label, portal, sized_box, split, text_button,
+    worker,
 };
 use xilem::{WindowId, WindowView, window};
 
 #[derive(Default)]
-pub enum Page {
+enum Page {
     #[default]
     Login,
     Signup,
@@ -30,7 +31,7 @@ pub struct AppState {
     page: Page,
     current_user: Option<User>,
     login_form: UserLoginForm,
-    login_sender: Option<UnboundedSender<(String, String)>>,
+    auth_sender: Option<UnboundedSender<AuthRequest>>,
     user_list: AsyncList<User, UserStorage>,
 }
 
@@ -42,7 +43,7 @@ impl Default for AppState {
             page: Page::default(),
             current_user: None,
             login_form: UserLoginForm::default(),
-            login_sender: None,
+            auth_sender: None,
             user_list: AsyncList::new(true, true),
         }
     }
@@ -63,7 +64,7 @@ impl AppState {
                     |state: &mut Self, submit| {
                         state
                             .login_form
-                            .handle_submit(submit, state.login_sender.as_ref());
+                            .handle_submit(submit, state.auth_sender.as_ref());
                     },
                 );
                 let separator = label("OR").color(GRAY);
@@ -81,13 +82,18 @@ impl AppState {
                     content,
                     worker(
                         |proxy, mut rx| async move {
-                            while let Some((username, password)) = rx.recv().await {
-                                let result = login(username, password).await;
+                            while let Some(AuthRequest::Login(username, password)) = rx.recv().await
+                            {
+                                if let Err(error) = login(username, password).await {
+                                    drop(proxy.message(Err(error)));
+                                    return;
+                                }
+                                let result = current_user().await;
                                 drop(proxy.message(result));
                             }
                         },
                         |state: &mut Self, sender| {
-                            state.login_sender = Some(sender);
+                            state.auth_sender = Some(sender);
                         },
                         |state: &mut Self, result| match result {
                             Ok(user) => {
@@ -126,6 +132,41 @@ impl AppState {
                 OneOf3::B(content)
             }
             Page::UserList => {
+                let user_profile = self.current_user.as_ref().map(|_| {
+                    lens(user_profile_overview, move |state: &mut Self| {
+                        &mut state.current_user.as_mut().unwrap().username
+                    })
+                });
+                let logout_button = action_button("Log Out", |state: &mut Self| {
+                    state.auth_sender.as_ref().inspect(|sender| {
+                        let _ = sender.send(AuthRequest::Logout);
+                    });
+                });
+                let sidebar = flex_col((logo(), user_profile, logout_button))
+                    .gap(20.px())
+                    .padding(15.);
+                let sidebar_worker = fork(
+                    sidebar,
+                    worker(
+                        |proxy, mut rx| async move {
+                            while let Some(AuthRequest::Logout) = rx.recv().await {
+                                let result = logout().await;
+                                drop(proxy.message(result));
+                            }
+                        },
+                        |state: &mut Self, sender| {
+                            state.auth_sender = Some(sender);
+                        },
+                        |state: &mut Self, result| match result {
+                            Ok(_) => {
+                                state.current_user = None;
+                                state.page = Page::default();
+                            }
+                            Err(error) => eprintln!("{}", error),
+                        },
+                    ),
+                );
+
                 let user_list = flex_row(sized_box(self.user_list.view()).width(600.px()))
                     .main_axis_alignment(MainAxisAlignment::Center)
                     .width(Dim::Stretch)
@@ -137,13 +178,20 @@ impl AppState {
                 });
                 let portal = portal(user_list).flex(1.);
                 let content = flex_col((portal, user_list_error)).gap(0.px());
-                // TODO: add a way to log out
-                OneOf3::C(map_action(
+                let worker = map_action(
                     map_state(AsyncList::worker(content), move |state: &mut Self| {
                         &mut state.user_list
                     }),
                     |_, _| (),
-                ))
+                );
+
+                OneOf3::C(
+                    split(sidebar_worker, worker)
+                        .split_point_from_start(200.px())
+                        .draggable(false)
+                        .solid_bar(true)
+                        .bar_thickness(2.px()),
+                )
             }
         };
         std::iter::once(

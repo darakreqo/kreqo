@@ -33,8 +33,8 @@ pub async fn current_user() -> Result<User, ServerError> {
 }
 
 #[server]
-pub async fn login(username: String, password: String) -> Result<User, ServerError> {
-    let pool = pool();
+pub async fn login(username: String, password: String) -> Result<(), ServerError> {
+    let (pool, auth) = context();
 
     let sql_user = get_sql_user_from_username(pool, username)
         .await
@@ -45,10 +45,9 @@ pub async fn login(username: String, password: String) -> Result<User, ServerErr
         .verify_password(password.as_bytes(), &parsed_hash)
         .map_err(|_| ServerError::WrongLogin)?;
 
-    let auth = auth();
     auth.login_user(sql_user.id);
 
-    sql_user.to_user(pool).await
+    Ok(())
 }
 
 #[server]

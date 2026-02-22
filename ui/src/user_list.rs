@@ -22,7 +22,7 @@ use crate::component::list::{
     ItemAction, ListFilter, ListItem, ListSorter, ListStorage, PendingItemOperation,
 };
 use crate::theme::{
-    ApplyClass, BORDERED_ROW, DANGER_COLOR, ROW, ROW_OVERLAY, SUCCESS_COLOR, constant_border_color,
+    ApplyClass, BORDERED_ROW, DANGER_COLOR, ROW, ROW_OVERLAY, SUCCESS_COLOR, form_border_color,
 };
 
 #[derive(Debug, Default)]
@@ -50,8 +50,8 @@ impl Form for UpdateUserForm {
         )
         .on_enter(|_, _| Submit::Yes)
         .placeholder("Username")
-        .apply_fn(
-            constant_border_color,
+        .apply(
+            form_border_color,
             self.last_error.as_ref().and_then(UserError::username_color),
         );
         let ok_button = button(label("Ok").color(SUCCESS_COLOR), |_| Submit::Yes);
@@ -61,7 +61,7 @@ impl Form for UpdateUserForm {
             flex_row((username.flex(1.), ok_button, cancel_button)),
             error,
         ))
-        .apply(BORDERED_ROW)
+        .class(BORDERED_ROW)
     }
 
     fn check(&mut self) -> Result<(), UserError> {
@@ -291,7 +291,7 @@ impl ListItem for User {
                 ItemAction::Delete
             }))
         };
-        flex_row((id, username.flex(1.), edit_button, delete_button)).apply(BORDERED_ROW)
+        flex_row((id, username.flex(1.), edit_button, delete_button)).class(BORDERED_ROW)
     }
 
     fn pending_view(
@@ -302,10 +302,10 @@ impl ListItem for User {
         let edit_button = text_button("Edit", |_| {}).disabled(true);
         let delete_button = text_button("Delete", |_| {}).disabled(true);
         let pending_layer =
-            flex_row((id, username.flex(1.), edit_button, delete_button)).apply(ROW);
+            flex_row((id, username.flex(1.), edit_button, delete_button)).class(ROW);
         let spinner_layer = flex_row(spinner())
             .main_axis_alignment(MainAxisAlignment::Center)
-            .apply(ROW_OVERLAY);
+            .class(ROW_OVERLAY);
         zstack((pending_layer, spinner_layer))
     }
 }

@@ -2510,6 +2510,7 @@ version = "0.0.0"
 dependencies = [
  "kreqo-core",
  "kreqo-server",
+ "parley",
  "rapidfuzz",
  "server_fn",
  "thiserror 2.0.18",
@@ -4837,6 +4838,7 @@ name = "tests"
 version = "0.0.0"
 dependencies = [
  "gh-workflow",
+ "kreqo-core",
  "serde_json",
 ]
 
