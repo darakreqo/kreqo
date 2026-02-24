@@ -75,6 +75,7 @@ pub fn server(args: proc_macro::TokenStream, s: TokenStream) -> TokenStream {
         s.into(),
         Some(syn::parse_quote!(server_fn)),
         option_env!("SERVER_FN_PREFIX").unwrap_or("/api"),
+        Some(syn::parse_quote! { CustomClient }),
         None,
         None,
     ) {

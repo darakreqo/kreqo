@@ -1,15 +1,12 @@
 use std::cmp::Ordering;
 
-use kreqo_core::User;
 use kreqo_core::errors::ServerError;
-use kreqo_server::database::{create_user, delete_user, get_users, update_user_username};
+use kreqo_core::users::User;
+use kreqo_server::api::{delete_user, get_users, signup, update_user_username};
 use rapidfuzz::distance::jaro;
 use server_fn::error::ServerFnErrorErr;
-use thiserror::Error;
 use xilem::core::one_of::Either;
-use xilem::core::{Edit, Read};
-use xilem::masonry::layout::{AsUnit, Dim};
-use xilem::palette::css::BLACK;
+use xilem::masonry::layout::AsUnit;
 use xilem::style::Style;
 use xilem::view::{
     FlexExt, MainAxisAlignment, button, flex_col, flex_row, label, prose, spinner, text_button,
@@ -17,97 +14,16 @@ use xilem::view::{
 };
 use xilem::{TextAlign, WidgetView};
 
+use crate::auth_forms::{UserError, UserSignupForm};
 use crate::component::Form;
 use crate::component::form::Submit;
 use crate::component::list::storage::Retryable;
 use crate::component::list::{
     ItemAction, ListFilter, ListItem, ListSorter, ListStorage, PendingItemOperation,
 };
-use crate::theme::{DANGER_COLOR, SUCCESS_COLOR, SURFACE_BORDER_COLOR, SURFACE_COLOR};
-
-#[derive(Debug, Error)]
-pub enum UserError {
-    #[error("username is required")]
-    EmptyUsername,
-    #[error("password is required")]
-    EmptyPassword,
-    #[error("password confirmation doesn't match")]
-    PasswordConfirmationMismatch,
-}
-
-#[derive(Debug, Default)]
-pub struct CreateUserForm {
-    username: String,
-    password: String,
-    password_confirmation: String,
-    last_error: Option<UserError>,
-}
-
-impl Form for CreateUserForm {
-    type Output = (String, String);
-    type Error = UserError;
-
-    fn last_error(&mut self) -> &mut Option<UserError> {
-        &mut self.last_error
-    }
-
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, Submit> + use<> {
-        let username = text_input(
-            self.username.clone(),
-            |state: &mut CreateUserForm, input| {
-                state.username = input;
-                Submit::No
-            },
-        )
-        .placeholder("Username");
-        let password = text_input(
-            self.password.clone(),
-            |state: &mut CreateUserForm, input| {
-                state.password = input;
-                Submit::No
-            },
-        )
-        .placeholder("Password");
-        let password_confirmation = text_input(
-            self.password_confirmation.clone(),
-            |state: &mut CreateUserForm, input| {
-                state.password_confirmation = input;
-                Submit::No
-            },
-        )
-        .placeholder("Password confirmation");
-        let signup_button = text_button("Signup", |_| Submit::Yes).width(Dim::Stretch);
-        let error = self.error_view();
-        flex_col((
-            username,
-            password,
-            password_confirmation,
-            signup_button,
-            error,
-        ))
-        .padding(25.)
-        .corner_radius(15.)
-        .background_color(SURFACE_COLOR)
-        .border(SURFACE_BORDER_COLOR, 1.)
-    }
-
-    fn validate(&mut self) -> Result<(String, String), UserError> {
-        if self.username.is_empty() {
-            return Err(UserError::EmptyUsername);
-        }
-        if self.password.is_empty() {
-            return Err(UserError::EmptyPassword);
-        }
-        if self.password != self.password_confirmation {
-            return Err(UserError::PasswordConfirmationMismatch);
-        }
-        self.password_confirmation = String::default();
-        Ok((
-            std::mem::take(&mut self.username),
-            std::mem::take(&mut self.password),
-        ))
-    }
-}
+use crate::theme::{
+    ApplyClass, BORDERED_ROW, DANGER_COLOR, ROW, ROW_OVERLAY, SUCCESS_COLOR, form_border_color,
+};
 
 #[derive(Debug, Default)]
 pub struct UpdateUserForm {
@@ -123,16 +39,21 @@ impl Form for UpdateUserForm {
         &mut self.last_error
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>, Submit> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self, Submit> + use<> {
         let username = text_input(
             self.username.clone(),
             |state: &mut UpdateUserForm, input| {
                 state.username = input;
+                state.last_error = state.check().err();
                 Submit::No
             },
         )
         .on_enter(|_, _| Submit::Yes)
-        .placeholder("Username");
+        .placeholder("Username")
+        .apply(
+            form_border_color,
+            self.last_error.as_ref().and_then(UserError::username_color),
+        );
         let ok_button = button(label("Ok").color(SUCCESS_COLOR), |_| Submit::Yes);
         let cancel_button = text_button("Cancel", |_| Submit::Cancel);
         let error = self.error_view();
@@ -140,16 +61,18 @@ impl Form for UpdateUserForm {
             flex_row((username.flex(1.), ok_button, cancel_button)),
             error,
         ))
-        .padding(5.)
-        .corner_radius(10.)
-        .background_color(SURFACE_COLOR)
-        .border(SURFACE_BORDER_COLOR, 1.)
+        .class(BORDERED_ROW)
     }
 
-    fn validate(&mut self) -> Result<String, UserError> {
+    fn check(&mut self) -> Result<(), UserError> {
         if self.username.is_empty() {
             return Err(UserError::EmptyUsername);
         }
+        Ok(())
+    }
+
+    fn validate(&mut self) -> Result<String, UserError> {
+        self.check()?;
         Ok(std::mem::take(&mut self.username))
     }
 }
@@ -189,7 +112,7 @@ impl ListStorage for UserStorage {
 
     #[inline(always)]
     async fn create((username, password): (String, String)) -> Result<User, ServerError> {
-        create_user(username, password).await
+        signup(username, password).await
     }
 
     #[inline(always)]
@@ -211,7 +134,7 @@ pub struct UserFilter {
 impl ListFilter for UserFilter {
     type Item = User;
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self> + use<> {
         let username_search = text_input(self.by_username.clone(), |state: &mut Self, input| {
             state.by_username = input;
         })
@@ -299,7 +222,7 @@ impl ListSorter for UserSorter {
         self.enabled
     }
 
-    fn view(&mut self) -> impl WidgetView<Edit<Self>> + use<> {
+    fn view(&mut self) -> impl WidgetView<Self> + use<> {
         let sorter = if self.enabled {
             let sort_by = text_button(self.sort_by.to_string(), |state: &mut Self| {
                 state.sort_by = state.sort_by.next();
@@ -338,7 +261,7 @@ impl ListSorter for UserSorter {
 
 impl ListItem for User {
     type Id = i64;
-    type CreateForm = CreateUserForm;
+    type CreateForm = UserSignupForm;
     type UpdateForm = UpdateUserForm;
     type Filter = UserFilter;
     type Sorter = UserSorter;
@@ -350,7 +273,7 @@ impl ListItem for User {
     fn view(
         &self,
         pending_item_operation: PendingItemOperation,
-    ) -> impl WidgetView<Read<Self>, ItemAction<Self>> + use<> {
+    ) -> impl WidgetView<Self, ItemAction<Self>> + use<> {
         let id = prose(format!("{}", self.id))
             .text_alignment(TextAlign::Center)
             .width(25.px());
@@ -368,29 +291,21 @@ impl ListItem for User {
                 ItemAction::Delete
             }))
         };
-        flex_row((id, username.flex(1.), edit_button, delete_button))
-            .padding(5.)
-            .corner_radius(10.)
-            .background_color(SURFACE_COLOR)
-            .border(SURFACE_BORDER_COLOR, 1.)
+        flex_row((id, username.flex(1.), edit_button, delete_button)).class(BORDERED_ROW)
     }
 
     fn pending_view(
-        (username, _): &(String, String),
-    ) -> impl WidgetView<Read<(String, String)>> + use<> {
+        (username, _): &mut (String, String),
+    ) -> impl WidgetView<(String, String)> + use<> {
         let id = prose("⏳").text_alignment(TextAlign::Center).width(25.px());
         let username = prose(username.to_string());
         let edit_button = text_button("Edit", |_| {}).disabled(true);
         let delete_button = text_button("Delete", |_| {}).disabled(true);
-        let pending_layer = flex_row((id, username.flex(1.), edit_button, delete_button))
-            .padding(5.)
-            .corner_radius(10.)
-            .background_color(SURFACE_COLOR);
+        let pending_layer =
+            flex_row((id, username.flex(1.), edit_button, delete_button)).class(ROW);
         let spinner_layer = flex_row(spinner())
             .main_axis_alignment(MainAxisAlignment::Center)
-            .padding(5.)
-            .corner_radius(10.)
-            .background_color(BLACK.with_alpha(0.25));
+            .class(ROW_OVERLAY);
         zstack((pending_layer, spinner_layer))
     }
 }

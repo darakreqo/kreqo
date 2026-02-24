@@ -8,23 +8,37 @@ edition = "2024"
 [workspace.dependencies]
 anyhow = "1.0"
 argon2 = "0.5"
+async-trait = "0.1"
 axum = "0.8"
+axum_session = "0.18"
+axum_session_auth = "0.18"
+axum_session_sqlx = "0.7"
+bytes = "1.11"
 cfg-if = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+cookie_store = "0.22"
+directories = "6.0"
 dotenvy = "0.15"
+futures = "0.3"
+hashbrown = { version = "0.16", features = ["serde"] }
+parley = "0.7"
 rapidfuzz = "0.5"
+reqwest = { version = "0.13", features = ["multipart", "stream", "cookies"] }
+reqwest_cookie_store = "0.10"
 rs-fsrs = "1.2"
 serde = { version = "1.0", features = ["derive"] }
-server_fn = { version = "0.8", default-features = false, features = ["axum", "reqwest"] }
-server_fn_macro = { version = "0.8", default-features = false, features = ["axum", "reqwest"] }
+server_fn = { version = "0.8", default-features = false, features = ["axum"] }
+server_fn_macro = { version = "0.8", default-features = false, features = ["axum"] }
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
 syn = "2.0"
 thiserror = "2.0"
 tokio = { version = "1.48", features = ["full"] }
+tokio-tungstenite = "0.28"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.20", features = ["v4"] }
 xilem = { git = "https://github.com/linebender/xilem" }
+zxcvbn = "3.1"
 
 kreqo-core = { path = "./core" }
 kreqo-server = { path = "./server", default-features = false }
@@ -35,3 +49,5 @@ kreqo-learn = { path = "./apps/learn" }
 
 [patch.crates-io]
 gh-workflow = { git = "https://github.com/darakreqo/gh-workflow" }
+server_fn = { git = "https://github.com/darakreqo/leptos" }
+server_fn_macro = { git = "https://github.com/darakreqo/leptos" }

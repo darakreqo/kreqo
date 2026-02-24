@@ -1,4 +1,5 @@
 use argon2::password_hash::Error as PasswordHashError;
+use axum_session::SessionError;
 use serde::{Deserialize, Serialize};
 use server_fn::codec::JsonEncoding;
 use server_fn::error::{FromServerFnError, ServerFnErrorErr};
@@ -8,12 +9,18 @@ use thiserror::Error;
 #[derive(Error, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum ServerError {
-    #[error("encountered an API error")]
+    #[error("API error: {0}")]
     API(ServerFnErrorErr),
-    #[error("encountered a database error")]
+    #[error("database error: {0}")]
     Database(String),
-    #[error("failed to hash password")]
+    #[error("session error: {0}")]
+    Session(String),
+    #[error("failed to hash password: {0}")]
     PasswordHash(String),
+    #[error("wrong username or password")]
+    WrongLogin,
+    #[error("authentication required or missing permissions")]
+    Unauthorized,
 }
 
 impl FromServerFnError for ServerError {
@@ -27,6 +34,12 @@ impl FromServerFnError for ServerError {
 impl From<SqlxError> for ServerError {
     fn from(value: SqlxError) -> Self {
         Self::Database(value.to_string())
+    }
+}
+
+impl From<SessionError> for ServerError {
+    fn from(value: SessionError) -> Self {
+        Self::Session(value.to_string())
     }
 }
 

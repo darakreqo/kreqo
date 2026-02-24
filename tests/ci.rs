@@ -1,4 +1,5 @@
 use gh_workflow::*;
+use kreqo_core::ExternMethod;
 use serde_json::json;
 
 #[test]
@@ -114,24 +115,3 @@ fn main() {
 
     workflow.generate().expect("workflow should generate");
 }
-
-trait ExternMethod
-where
-    Self: Sized,
-{
-    fn apply<F>(self, method: F) -> Self
-    where
-        F: Fn(Self) -> Self,
-    {
-        method(self)
-    }
-    fn apply_with<F, O>(self, method: F, options: O) -> Self
-    where
-        F: Fn(Self, O) -> Self,
-    {
-        method(self, options)
-    }
-}
-
-impl ExternMethod for Job {}
-impl<A> ExternMethod for Step<A> {}
